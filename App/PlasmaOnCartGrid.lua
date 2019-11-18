@@ -236,11 +236,11 @@ local function buildApplication(self, tbl)
 
    -- Setup information about fields: if this is not specified, it is
    -- assumed there are no force terms (neutral particles).
-   local field = nil
+   local field   = nil
    local nfields = 0
    for _, val in pairs(tbl) do
       if Field.FieldBase.is(val) then
-        field = val
+        field   = val
         completeFieldSetup(field)
         nfields = nfields + 1
       end
@@ -255,7 +255,7 @@ local function buildApplication(self, tbl)
       if Field.FuncFieldBase.is(val) then
         funcField = val
         completeFieldSetup(funcField)
-        nfields = nfields + 1
+        nfields   = nfields + 1
       end
    end
    assert(nfields<=1, "PlasmaOnCartGrid: can only specify one FuncField object!")
@@ -945,6 +945,7 @@ return {
       LBOCollisions        = Collisions.VmLBOCollisions,
       BgkCollisions        = Collisions.VmBGKCollisions,
       LboCollisions        = Collisions.VmLBOCollisions,
+      VoronovIonization    = Collisions.VoronovIonization,
    },
    Moments = {
       App = App, Species = Species.MomentSpecies, Field = Field.MaxwellField,

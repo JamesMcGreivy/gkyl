@@ -8,33 +8,33 @@
 --
 --------------------------------------------------------------------------------
 
-local Proto = require "Lib.Proto"
-local Updater = require "Updater"
+local Proto          = require "Lib.Proto"
+local Updater        = require "Updater"
 local CollisionsBase = require "App.Collisions.CollisionsBase"
 
 -- VoronovIonization -----------------------------------------------------------
 --
--- Voronov ionization operator
+-- Voronov ionization operator.
 --------------------------------------------------------------------------------
 
 local VoronovIonization = Proto(CollisionsBase)
 
--- this ctor simply stores what is passed to it and defers actual
--- construction to the fullInit() method below
+-- This ctor simply stores what is passed to it and defers actual
+-- construction to the fullInit() method below.
 function VoronovIonization:init(tbl)
    self.tbl = tbl
 end
 
 -- Actual function for initialization. This indirection is needed as
--- we need the app top-level table for proper initialization
-function VoronovIonization:fullInit(collTbl)
-   local tbl = self.tbl -- previously store table
+-- we need the app top-level table for proper initialization.
+function VoronovIonization:fullInit(speciesTbl)
+   local tbl = self.tbl -- Previously store table.
 
-   self.elcNm = tbl.electrons
-   self.ionNm = tbl.ions
+   self.elcNm       = tbl.electrons
+   self.ionNm       = tbl.ions
    self.neutOnElcNm = tbl.neutralOnElc
    self.neutOnIonNm = tbl.neutralOnIon
-   self.plasma = tbl.plasma
+   self.plasma      = tbl.plasma
 
    if self.plasma == "H" then
       self._E = 13.6
@@ -48,37 +48,38 @@ end
 function VoronovIonization:setName(nm)
    self.name = nm
 end
+function VoronovIonization:setSpeciesName(nm)
+   self.speciesName = nm
+end
+
+function VoronovIonization:setCfl(cfl)
+   self.cfl = cfl
+end
 
 function VoronovIonization:setConfBasis(basis)
    self.confBasis = basis
 end
-function VoronovIonization:setConfGrid(cgrid)
-   self.confGrid = cgrid
+function VoronovIonization:setConfGrid(grid)
+   self.confGrid = grid
 end
 
-function VoronovIonization:setPhaseBasis(species)
-   self.phaseBasis = {}
-   self.phaseBasis['elc'] = species[self.elcNm].basis
-   self.phaseBasis['ion'] = species[self.ionNm].basis
+function VoronovIonization:setPhaseBasis(basis)
+   self.phaseBasis = basis
 end
 
-function VoronovIonization:setPhaseGrid(species)
-   self.phaseGrid = {}
-   self.phaseGrid['elc'] = species[self.elcNm].grid
-   self.phaseGrid['ion'] = species[self.ionNm].grid
+function VoronovIonization:setPhaseGrid(grid)
+   self.phaseGrid = grid
 end
-
--- methods for Bgk collisions object
 
 function VoronovIonization:createSolver(species)
    self.collisionSlvr = Updater.VoronovIonization {
-      onGrid = species[self.elcNm].confGrid,
-      confGrid = species[self.elcNm].confGrid,
-      confBasis = species[self.elcNm].confBasis,
-      phaseGrid = species[self.elcNm].grid,
+      onGrid     = species[self.elcNm].confGrid,
+      confGrid   = species[self.elcNm].confGrid,
+      confBasis  = species[self.elcNm].confBasis,
+      phaseGrid  = species[self.elcNm].grid,
       phaseBasis = species[self.elcNm].basis,
       elemCharge = math.abs(species[self.elcNm]:getCharge()),
-      elcMass = species[self.elcNm]:getMass(),
+      elcMass    = species[self.elcNm]:getMass(),
       -- Voronov parameters
       A = self._A,
       E = self._E,
@@ -91,12 +92,12 @@ end
 -- NRM 11/13/18: this doesn't have the right signature...
 function VoronovIonization:advance(tCurr, idxIn, outIdx, species)
    local elcMomFields = species[self.elcNm]:fluidMoments()
-   local spOutFields =  {}
+   local spOutFields  = {}
    -- for nm, sp in pairs(species) do
    --    spOutFields[nm] = sp:rkStepperFields()[outIdx]
    -- end
-   spOutFields['elc'] = species[self.elcNm]:rkStepperFields()[outIdx]
-   spOutFields['ion'] = species[self.ionNm]:rkStepperFields()[outIdx]
+   spOutFields['elc']       = species[self.elcNm]:rkStepperFields()[outIdx]
+   spOutFields['ion']       = species[self.ionNm]:rkStepperFields()[outIdx]
    spOutFields['neutOnElc'] = species[self.neutOnElcNm]:rkStepperFields()[outIdx]
    spOutFields['neutOnIon'] = species[self.neutOnIonNm]:rkStepperFields()[outIdx]
    self.collisionSlvr:advance(tCurr, elcMomFields, spOutFields)

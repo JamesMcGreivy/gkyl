@@ -463,12 +463,12 @@ function KineticSpecies:createSolver(funcField)
    if self.positivity then
       self.posChecker = Updater.PositivityCheck {
          onGrid = self.grid,
-         basis = self.basis,
+         basis  = self.basis,
       }
 
       self.posRescaler = Updater.PositivityRescale {
          onGrid = self.grid,
-         basis = self.basis,
+         basis  = self.basis,
       }
    end
 end

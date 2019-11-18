@@ -4,15 +4,15 @@
 --
 --------------------------------------------------------------------------------
 
--- Gkyl libraries
+-- Gkyl libraries.
 local GaussQuadRules = require "Lib.GaussQuadRules"
-local Lin = require "Lib.Linalg"
-local Proto = require "Proto"
-local Range = require "Lib.Range"
-local Time = require "Lib.Time"
-local UpdaterBase = require "Updater.Base"
+local Lin            = require "Lib.Linalg"
+local Proto          = require "Proto"
+local Range          = require "Lib.Range"
+local Time           = require "Lib.Time"
+local UpdaterBase    = require "Updater.Base"
 
--- BGK Collisions updater object
+-- Voronov Collisions updater object.
 local VoronovIonization = Proto(UpdaterBase)
 
 ----------------------------------------------------------------------

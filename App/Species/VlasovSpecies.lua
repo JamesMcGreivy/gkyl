@@ -466,7 +466,12 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
 
 end
 
+function VlasovSpecies:setActiveRKidx(rkIdx)
+   self.activeRKidx = rkIdx
+end
+
 function VlasovSpecies:advance(tCurr, species, emIn, inIdx, outIdx)
+   self:setActiveRKidx(inIdx)
    local fIn     = self:rkStepperFields()[inIdx]
    local fRhsOut = self:rkStepperFields()[outIdx]
 
@@ -534,7 +539,7 @@ function VlasovSpecies:advance(tCurr, species, emIn, inIdx, outIdx)
       self.confBasis:evalBasis(upper, basisUpper)
       self.confBasis:evalBasis(lower, basisLower)
 
-      local flux = self:fluidMoments()[2]
+      local flux                 = self:fluidMoments()[2]
       local fluxIndexer, fluxItr = flux:genIndexer(), flux:get(1)
       for idx in flux:localRangeIter() do
 	 if idx[1] == self.grid:numCells(1) then
@@ -966,6 +971,14 @@ end
 
 function VlasovSpecies:crossPrimitiveMoments(otherSpeciesName)
    return { self.uCross[otherSpeciesName], self.vtSqCross[otherSpeciesName] }
+end
+
+function VlasovSpecies:getDistF(rkIdx)
+   if rkIdx == nil then
+      return self:rkStepperFields()[self.activeRKidx]
+   else
+      return self:rkStepperFields()[self.rkIdx]
+   end
 end
 
 function VlasovSpecies:getNumDensity(rkIdx)

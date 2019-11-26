@@ -149,39 +149,38 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
    local elcM2 = assert(inFld[3],
 			"VoronovIonization.advance: Must specify an input fluid moments field")
 
-   local fElcOut = assert(outFld['elc'],
-			  "VoronovIonization.advance: Must specify an electron output field")
-   local fIonOut = assert(outFld['ion'],
-			  "VoronovIonization.advance: Must specify an ion output field")
-   local fNeutOnElcOut = assert(outFld['neutOnElc'],
-				"VoronovIonization.advance: Must specify a neutral output field on electron mesh")
-   local fNeutOnIonOut = assert(outFld['neutOnIon'],
-				"VoronovIonization.advance: Must specify a neutral output field on ion mesh")
+   local fOut = assert(outFld['fOut'],
+			  "VoronovIonization.advance: Must specify an output field")
+   --local fIonOut = assert(outFld['ion'],
+			  --"VoronovIonization.advance: Must specify an ion output field")
+   local fNeutOnOut = assert(outFld['neutOnOut'],
+				"VoronovIonization.advance: Must specify a neutral output field on fOut mesh")
+   --local fNeutOnIonOut = assert(outFld['neutOnIon'],
+				--"VoronovIonization.advance: Must specify a neutral output field on ion mesh")
 
    local elcM0Itr = elcM0:get(1)
    local elcM1iItr = elcM1i:get(1)
    local elcM2Itr = elcM2:get(1)
-   local fElcItr = fElcOut:get(1)
-   local fIonItr = fIonOut:get(1)
-   local fNeutOnElcItr = fNeutOnElcOut:get(1)
-   local fNeutOnIonItr = fNeutOnIonOut:get(1)
+   local fOutItr = fOut:get(1)
+   --local fIonItr = fIonOut:get(1) -- Is this needed for both? 
+   local fNeutOnOutItr = fNeutOnOut:get(1) 
+   --local fNeutOnIonItr = fNeutOnIonOut:get(1) -- Is this needed for both?
 
    -- Get the Ranges to loop over the domain
    local confRange = elcM0:localRange()
    local confIndexer = elcM0:genIndexer()
-   local phaseRangeElc = fElcOut:localRange()
-   local phaseIndexerElc = fElcOut:genIndexer()
-   local phaseRangeIon = fIonOut:localRange()
-   local phaseIndexerIon = fIonOut:genIndexer()
-   local le, ue, li, ui = {}, {}, {}, {}
+   local phaseRange = fOut:localRange()
+   local phaseIndexer = fOut:genIndexer()
+   --local phaseRangeIon = fIonOut:localRange()
+   --local phaseIndexerIon = fIonOut:genIndexer()
+   local l, u = {}, {}
    for d = 1, numVelDims do
-      le[d] = phaseRangeElc:lower(numConfDims + d)
-      ue[d] = phaseRangeElc:upper(numConfDims + d)
-      li[d] = phaseRangeIon:lower(numConfDims + d)
-      ui[d] = phaseRangeIon:upper(numConfDims + d)
+      l[d] = phaseRange:lower(numConfDims + d)
+      u[d] = phaseRange:upper(numConfDims + d)
+      --li[d] = phaseRangeIon:lower(numConfDims + d)
+      --ui[d] = phaseRangeIon:upper(numConfDims + d)
    end
-   local velRangeElc = Range.Range(le, ue)
-   local velRangeIon = Range.Range(li, ui)
+   local velRange = Range.Range(l, u)
 
    -- Configuration space loop
    for confIdx in confRange:colMajorIter() do
@@ -226,14 +225,14 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
       -- self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
 
       -- tmProjectMaxwellStart = Time.clock()
-      -- Velocity space loop for electrons
-      for velIdx in velRangeElc:colMajorIter() do
-	 -- Construct the phase space index ot of the configuration
-	 -- space a velocity space indices
+      -- Velocity space loop
+      for velIdx in velRange:colMajorIter() do
+	 -- Construct the phase space index out of the configuration
+	 -- space and velocity space indices
 	 for d = 1, numConfDims do phaseIdx[d] = confIdx[d] end
 	 for d = 1, numVelDims do phaseIdx[d + numConfDims] = velIdx[d] end
-	 fElcOut:fill(phaseIndexerElc(phaseIdx), fElcItr)
-	 fNeutOnElcOut:fill(phaseIndexerElc(phaseIdx), fNeutOnElcItr)
+	 fOut:fill(phaseIndexer(phaseIdx), fOutItr)
+	 fNeutOnOut:fill(phaseIndexer(phaseIdx), fNeutOnOutItr)
 
 	 for k = 1, numPhaseBasis do RHS[k] = 0 end
 	 for muIdx in phaseQuadRange:colMajorIter() do
@@ -243,7 +242,7 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
 	    -- Project on basis
 	    fOrd = 0.0
 	    for k = 1, numPhaseBasis do -- evaluation
-	       fOrd = fOrd + self._phaseBasisAtOrdinates[phaseMu][k] * fNeutOnElcItr[k]
+	       fOrd = fOrd + self._phaseBasisAtOrdinates[phaseMu][k] * fNeutOnOutItr[k]
 	    end
 	    for k = 1, numPhaseBasis do -- itegral
 	       RHS[k] = RHS[k] +
@@ -253,42 +252,42 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
 	 end
 	 -- Increment RHSs
 	 for k = 1, numPhaseBasis do
-	    fElcItr[k] = fElcItr[k] + RHS[k]
-	    fNeutOnElcItr[k] = fNeutOnElcItr[k] - RHS[k]
+	    fOutItr[k] = fOutItr[k] + RHS[k]
+	    fNeutOnOutItr[k] = fNeutOnOutItr[k] - RHS[k]
 	 end
       end
 
-      -- Velocity space loop for electrons
-      for velIdx in velRangeIon:colMajorIter() do
-	 -- Construct the phase space index ot of the configuration
-	 -- space a velocity space indices
-	 for d = 1, numConfDims do phaseIdx[d] = confIdx[d] end
-	 for d = 1, numVelDims do phaseIdx[d + numConfDims] = velIdx[d] end
-	 fIonOut:fill(phaseIndexerIon(phaseIdx), fIonItr)
-	 fNeutOnIonOut:fill(phaseIndexerIon(phaseIdx), fNeutOnIonItr)
+      -- Velocity space loop for ion
+      -- for velIdx in velRangeIon:colMajorIter() do
+      -- 	 -- Construct the phase space index out of the configuration
+      -- 	 -- space a velocity space indices
+      -- 	 for d = 1, numConfDims do phaseIdx[d] = confIdx[d] end
+      -- 	 for d = 1, numVelDims do phaseIdx[d + numConfDims] = velIdx[d] end
+      -- 	 fIonOut:fill(phaseIndexerIon(phaseIdx), fIonItr)
+      -- 	 fNeutOnIonOut:fill(phaseIndexerIon(phaseIdx), fNeutOnIonItr)
 
-	 for k = 1, numPhaseBasis do RHS[k] = 0 end
-	 for muIdx in phaseQuadRange:colMajorIter() do
-	    confMu = confQuadIndexer(muIdx)
-	    phaseMu = phaseQuadIndexer(muIdx)
+      -- 	 for k = 1, numPhaseBasis do RHS[k] = 0 end
+      -- 	 for muIdx in phaseQuadRange:colMajorIter() do
+      -- 	    confMu = confQuadIndexer(muIdx)
+      -- 	    phaseMu = phaseQuadIndexer(muIdx)
 
-	    -- Project on basis
-	    fOrd = 0.0
-	    for k = 1, numPhaseBasis do -- evaluation
-	       fOrd = fOrd + self._phaseBasisAtOrdinates[phaseMu][k] * fNeutOnIonItr[k]
-	    end
-	    for k = 1, numPhaseBasis do -- itegral
-	       RHS[k] = RHS[k] +
-		  self._phaseWeights[phaseMu] * vorozonCoefOrd[confMu] *
-		  self._phaseBasisAtOrdinates[phaseMu][k] * fOrd
-	    end
-	 end
-	 -- Increment RHSs
-	 for k = 1, numPhaseBasis do
-	    fIonItr[k] = fIonItr[k] + RHS[k]
-	    fNeutOnIonItr[k] = fNeutOnIonItr[k] - RHS[k]
-	 end
-      end
+      -- 	    -- Project on basis
+      -- 	    fOrd = 0.0
+      -- 	    for k = 1, numPhaseBasis do -- evaluation
+      -- 	       fOrd = fOrd + self._phaseBasisAtOrdinates[phaseMu][k] * fNeutOnIonItr[k]
+      -- 	    end
+      -- 	    for k = 1, numPhaseBasis do -- itegral
+      -- 	       RHS[k] = RHS[k] +
+      -- 		  self._phaseWeights[phaseMu] * vorozonCoefOrd[confMu] *
+      -- 		  self._phaseBasisAtOrdinates[phaseMu][k] * fOrd
+      -- 	    end
+      -- 	 end
+      -- 	 -- Increment RHSs
+      -- 	 for k = 1, numPhaseBasis do
+      -- 	    fIonItr[k] = fIonItr[k] + RHS[k]
+      -- 	    fNeutOnIonItr[k] = fNeutOnIonItr[k] - RHS[k]
+      -- 	 end
+      -- end
       -- self._tmProjectMaxwell = self._tmProjectMaxwell + Time.clock() -
       -- 	 tmProjectMaxwellStart
    end

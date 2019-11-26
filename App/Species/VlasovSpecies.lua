@@ -522,6 +522,7 @@ function VlasovSpecies:advance(tCurr, species, emIn, inIdx, outIdx)
          -- collisions.
       end
    end
+
    if self.sourceSteadyState and self.evolveSources then
       local localEdgeFlux = ffi.new("double[3]")
       localEdgeFlux[0] = 0.0

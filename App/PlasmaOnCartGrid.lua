@@ -294,7 +294,7 @@ local function buildApplication(self, tbl)
       s:advance(0, species, {field, funcField}, 1, 2)
       s:applyBc(0, s:rkStepperFields()[1])
    end
-
+   
    -- Function to write data to file.
    local function writeData(tCurr, force)
       for _, s in pairs(species) do s:write(tCurr, force) end

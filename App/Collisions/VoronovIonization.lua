@@ -8,9 +8,19 @@
 --
 --------------------------------------------------------------------------------
 
-local Proto          = require "Lib.Proto"
-local Updater        = require "Updater"
+-- local Proto          = require "Lib.Proto"
+-- local Updater        = require "Updater"
+-- local CollisionsBase = require "App.Collisions.CollisionsBase"
+
 local CollisionsBase = require "App.Collisions.CollisionsBase"
+local Constants      = require "Lib.Constants"
+local DataStruct     = require "DataStruct"
+local Proto          = require "Lib.Proto"
+local Time           = require "Lib.Time"
+local Updater        = require "Updater"
+local Mpi            = require "Comm.Mpi"
+local lume           = require "Lib.lume"
+local xsys           = require "xsys"
 
 -- VoronovIonization -----------------------------------------------------------
 --
@@ -30,11 +40,19 @@ end
 function VoronovIonization:fullInit(speciesTbl)
    local tbl = self.tbl -- Previously store table.
 
+   self.collKind = "Voronov"
+
+   self.collidingSpecies = assert(tbl.collideWith, "App.VoronovIonization: Must specify names of species to collide with in 'collideWith'.")
+
+   self.selfCollisions = false
+   
    self.elcNm       = tbl.electrons
-   self.ionNm       = tbl.ions
-   self.neutOnElcNm = tbl.neutralOnElc
-   self.neutOnIonNm = tbl.neutralOnIon
+   --self.ionNm       = tbl.ions
+   self.neutOnNm    = tbl.neutralOn --Elc
+   --self.neutOnIonNm = tbl.neutralOnIon
    self.plasma      = tbl.plasma
+   self.mass        = tbl.elcMass
+   self.charge      = tbl.elemCharge
 
    if self.plasma == "H" then
       self._E = 13.6
@@ -71,15 +89,18 @@ function VoronovIonization:setPhaseGrid(grid)
    self.phaseGrid = grid
 end
 
-function VoronovIonization:createSolver(species)
+function VoronovIonization:createSolver(funcField) --species)
+   -- will need to fetch information when neutrals have different grid than elc/ion
+   -- could grab grid from current neutral species
    self.collisionSlvr = Updater.VoronovIonization {
-      onGrid     = species[self.elcNm].confGrid,
-      confGrid   = species[self.elcNm].confGrid,
-      confBasis  = species[self.elcNm].confBasis,
-      phaseGrid  = species[self.elcNm].grid,
-      phaseBasis = species[self.elcNm].basis,
-      elemCharge = math.abs(species[self.elcNm]:getCharge()),
-      elcMass    = species[self.elcNm]:getMass(),
+      onGrid     = self.confGrid, --species[self.elcNm].confGrid,
+      confGrid   = self.confGrid, --species[self.elcNm].confGrid,
+      confBasis  = self.confBasis, --species[self.elcNm].confBasis,
+      phaseGrid  = self.phaseGrid, --species[self.elcNm].grid,
+      phaseBasis = self.phaseBasis, --species[self.elcNm].basis,
+      elcMass    = self.mass, --species[self.elcNm]:getMass(), 
+      elemCharge = self.charge, --math.abs(species[self.elcNm]:getCharge()),  
+
       -- Voronov parameters
       A = self._A,
       E = self._E,
@@ -90,27 +111,25 @@ function VoronovIonization:createSolver(species)
 end
 
 -- NRM 11/13/18: this doesn't have the right signature...
-function VoronovIonization:advance(tCurr, idxIn, outIdx, species)
+function VoronovIonization:advance(tCurr, fIn, species, fRhsOut) --idxIn, outIdx, species)
    local elcMomFields = species[self.elcNm]:fluidMoments()
    local spOutFields  = {}
    -- for nm, sp in pairs(species) do
    --    spOutFields[nm] = sp:rkStepperFields()[outIdx]
    -- end
-   spOutFields['elc']       = species[self.elcNm]:rkStepperFields()[outIdx]
-   spOutFields['ion']       = species[self.ionNm]:rkStepperFields()[outIdx]
-   spOutFields['neutOnElc'] = species[self.neutOnElcNm]:rkStepperFields()[outIdx]
-   spOutFields['neutOnIon'] = species[self.neutOnIonNm]:rkStepperFields()[outIdx]
+   spOutFields['fOut']        = species[self.speciesName]:getDistF()
+   spOutFields['neutOnOut']   = species[self.neutOnNm]:getDistF()
    self.collisionSlvr:advance(tCurr, elcMomFields, spOutFields)
 end
 
 function VoronovIonization:write(tm, frame)
 end
 
-function VoronovIonization:totalSolverTime()
+function VoronovIonization:slvrTime()
    return self.collisionSlvr.totalTime
 end
 
-function VoronovIonization:evalMomTime()
+function VoronovIonization:momTime()
    return self.collisionSlvr:evalMomTime()
 end
 

@@ -538,6 +538,11 @@ function KineticSpecies:alloc(nRkDup)
 
 end
 
+ -- may want to move getDistF here, too?
+function KineticSpecies:setActiveRKidx(rkIdx)
+   self.activeRKidx = rkIdx
+end
+
 -- Note: do not call applyBc here. it is called later in initialization sequence.
 function KineticSpecies:initDist()
    if self.randomseed then 
@@ -596,6 +601,8 @@ function KineticSpecies:initDist()
 
    self.distf[2]:clear(0.0)
 
+   self:setActiveRKidx(1)
+   
    -- Calculate initial density averaged over simulation domain.
    --self.n0 = nil
    --local dens0 = self:allocMoment()

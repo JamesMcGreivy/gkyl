@@ -48,7 +48,7 @@ function VoronovIonization:fullInit(speciesTbl)
    
    self.elcNm       = tbl.electrons
    --self.ionNm       = tbl.ions
-   self.neutOnNm    = tbl.neutralOn --Elc
+   self.neutInNm      = tbl.collideWith[1] --Elc
    --self.neutOnIonNm = tbl.neutralOnIon
    self.plasma      = tbl.plasma
    self.mass        = tbl.elcMass
@@ -117,8 +117,8 @@ function VoronovIonization:advance(tCurr, fIn, species, fRhsOut) --idxIn, outIdx
    -- for nm, sp in pairs(species) do
    --    spOutFields[nm] = sp:rkStepperFields()[outIdx]
    -- end
-   spOutFields['fOut']        = species[self.speciesName]:getDistF()
-   spOutFields['neutOnOut']   = species[self.neutOnNm]:getDistF()
+   spOutFields['fOut']     = fRhsOut
+   spOutFields['neutIn']   = species[self.neutInNm]:getDistF()
    self.collisionSlvr:advance(tCurr, elcMomFields, spOutFields)
 end
 

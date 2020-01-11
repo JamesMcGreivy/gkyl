@@ -1,0 +1,150 @@
+/* Generate kernels for the updater that computes the Voronov
+   ionization reaction rate n<\sigma v_e> */
+/* Obtaining a full expansion for the reaction rate is likely
+   to be a complex operation, so we will probably need a
+   dedicated updater. For now only use cell averages. */
+
+load("modal-basis");
+load("out-scripts");
+load(stringproc)$
+load("scifac")$
+fpprec : 24$
+
+/* Serendipity basis. */
+maxPolyOrder_Ser : 3$
+minCdim_Ser : 1$
+maxCdim_Ser : 3$
+
+/* Maximal order basis. */
+maxPolyOrder_Max : 3$
+minCdim_Max : 1$
+maxCdim_Max : 3$
+
+/* ...... END OF USER INPUTS........ */
+
+
+writeCExprsCollect1r(lhs, rhs, clst) := block([expr],
+  expr : float(expand(rhs)),
+  for i : 1 thru length(expr) do (
+    if expr[i] # 0.0 then (
+      param : cons(expr[i], clst),
+      e : apply(collectterms, param),
+      ep : string(e),
+      outStr : ssubst("pow(U,K)","U^K",ep),
+      outStr : ssubst("pow(2,3/2)","2^(3/2)",outStr),
+      outStr : ssubst("pow(U,K+1/2)","U^(K+1/2)",outStr),
+      outStr : ssubst("exp(U)","e^U",outStr),      
+      printf(fh, "    ~a = ~a; ~%", lhs[i-1], outStr)
+    )
+  )
+)$
+
+declareWriteCExprsC(lhs, rhs) := block([expr],
+  expr : float(expand(rhs)),
+  if expr # 0.0 then (
+    ep : string(expr),
+    outStr : ssubst("pow(U,K)","U^K",ep),
+    outStr : ssubst("pow(2,3/2)","2^(3/2)",outStr),
+    outStr : ssubst("pow(U,K+1/2)","U^(K+1/2)",outStr),
+    outStr : ssubst("exp(U)","e^U",outStr), 
+    printf(fh, "  double ~a = ~a; ~%", lhs, outStr)
+  )
+)$
+
+writeCExprsCs(lhs, rhs) := block([expr],
+  expr : float(expand(rhs)),
+  if expr # 0.0 then (
+    ep : string(expr),
+    outStr : ssubst("pow(U,K)","U^K",ep),
+    outStr : ssubst("pow(2,3/2)","2^(3/2)",outStr),
+    outStr : ssubst("pow(U,K+1/2)","U^(K+1/2)",outStr),
+    outStr : ssubst("exp(U)","e^U",outStr), 
+    printf(fh, "    ~a = ~a; ~%", lhs, outStr)
+  )
+)$
+
+writeCExprsCnos(lhs, rhs) := block([expr],
+  expr : float(expand(rhs)),
+  if expr # 0.0 then (
+    ep : string(expr),
+    outStr : ssubst("pow(U,K)","U^K",ep),
+    outStr : ssubst("pow(2,3/2)","2^(3/2)",outStr),
+    outStr : ssubst("pow(U,K+1/2)","U^(K+1/2)",outStr),
+    outStr : ssubst("exp(U)","e^U",outStr), 
+    printf(fh, "  ~a = ~a; ~%", lhs, outStr)
+  )
+)$
+
+calcCellAvVoronovReactRate(fh, funcNm, cdim, basisFun, pMax) := block([],
+
+  kill(varsC, varsP, basisC, basisP),
+
+  load(sconcat("basis-precalc/basis", basisFun, cdim, "x")),
+
+  for polyOrder : 1 thru pMax do (
+    bC  : basisC[polyOrder],
+    NC  : length(bC),
+  
+    /* Function declaration with input/output variables. */
+    printf(fh, "void ~a_P~a(const double elemCharge, const double m_, const double *m0, const double *vtSq, const double *nuIZ, const double E, const double A, const double K, const double P, const double X) ~%{ ~%", funcNm, polyOrder),
+    printf(fh, "  // elemCharge: elementary charge (J - eV conversion factor). ~%"),    
+    printf(fh, "  // E:   	  Voronov ionization energy. ~%"),
+    printf(fh, "  // A:   	  Voronov constant. ~%"),
+    printf(fh, "  // K:   	  Voronov constant. ~%"),
+    printf(fh, "  // P:   	  Voronov constant. ~%"),
+    printf(fh, "  // X:   	  Voronov constant. ~%"),
+    printf(fh, "  // m_:          mass of electron. ~%"),
+    printf(fh, "  // m0[~a]:      number density of electrons. ~%", NC),
+    printf(fh, "  // vtSq[~a]:    squared thermal speed, sqrt(T/m) ~%", NC),
+    printf(fh, "  // nuIZ[~a]:    ionization reaction rate. ~%", NC),
+    printf(fh, " ~%"),
+
+    m0_c   : makelist(m0[i],i,0,NC-1),
+    m0_e   : doExpand1(m0,bC),
+    vtSq_e : doExpand1(vtSq,bC),
+
+    m0av    : innerProd(varsC,1.0,1.0,m0_e)/innerProd(varsC,1.0,1.0,1.0),
+    vtSqAv  : innerProd(varsC,1.0,1.0,vtSq_e)/innerProd(varsC,1.0,1.0,1.0),
+ 
+    declareWriteCExprsC(n0, m0av),
+    declareWriteCExprsC(vtSq0, vtSqAv),
+    declareWriteCExprsC(T0, vtSqAv*m_/elemCharge),
+
+    Uav : E/T0,
+    declareWriteCExprsC(U, Uav),	
+
+    radexpand: false,
+    nuIZ_c : calcInnerProdList(varsC,1.0,bC, m0_e*(A*(1 + P*sqrt(U))/(X + U)*U^K*e^(-U)*1e-6)),
+    /* Multiply by electron density and figure out whether to expand in conf basis or use cell average */
+
+    printf(fh, " ~%"),		     
+    writeCExprsCs(nuIZ,nuIZ_c),
+
+    printf(fh, "} ~%"),
+    printf(fh, " ~%")
+  )
+)$
+
+bName        : ["Ser","Max"]$
+maxPolyOrder : [maxPolyOrder_Ser, maxPolyOrder_Max]$
+minCdim      : [minCdim_Ser, minCdim_Max]$
+minVdim      : [minVdim_Ser, minVdim_Max]$
+maxCdim      : [maxCdim_Ser, maxCdim_Max]$
+maxVdim      : [maxVdim_Ser, maxVdim_Max]$
+
+for bInd : 1 thru length(bName) do (
+  for c : minCdim[bInd] thru maxCdim[bInd] do (
+    disp(printf(false,sconcat("Creating Voronov",bName[bInd]," ~ax"),c)),
+    fname : sconcat("~/max-out/Voronov", bName[bInd], c, "x", ".cpp"),
+    fh : openw(fname),
+
+    printf(fh, "#include <VoronovModDecl.h> ~%"),
+    printf(fh, "#include <math.h> ~%"),
+
+    /*.Build cell-average collisionality from scratch. */
+    funcName : sconcat("VoronovReactRateCellAv", c, "x", bName[bInd]),
+    calcCellAvVoronovReactRate(fh, funcName, c, bName[bInd], maxPolyOrder[bInd]),
+    close(fh)
+  )
+)$
+

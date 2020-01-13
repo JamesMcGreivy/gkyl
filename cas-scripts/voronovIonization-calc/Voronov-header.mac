@@ -4,8 +4,8 @@ polyOrderMax : 3$
 
 fh : openw("~/max-out/VoronovModDecl.h")$
 
-printf(fh, "#ifndef SPITZERNU_MOD_DELC_H ~%")$
-printf(fh, "#define SPITZERNU_MOD_DELC_H ~%")$
+printf(fh, "#ifndef VORONOV_MOD_DELC_H ~%")$
+printf(fh, "#define VORONOV_MOD_DELC_H ~%")$
 printf(fh, "#include <cmath> ~%~%")$
 printf(fh, "#include <algorithm> ~%~%")$
 printf(fh, "extern \"C\" { ~%")$

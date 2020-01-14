@@ -12,6 +12,13 @@ def build(bld):
     TenMomentSrcImpl.cpp
     TenMomentRelaxImpl.cpp
 
+    voronovCalcData/VoronovSer1x.cpp
+    voronovCalcData/VoronovSer2x.cpp
+    voronovCalcData/VoronovSer3x.cpp
+    voronovCalcData/VoronovMax1x.cpp
+    voronovCalcData/VoronovMax2x.cpp
+    voronovCalcData/VoronovMax3x.cpp
+
     spitzerNuCalcData/SpitzerNuSer1x.cpp
     spitzerNuCalcData/SpitzerNuSer2x.cpp
     spitzerNuCalcData/SpitzerNuSer3x.cpp
@@ -205,5 +212,5 @@ def build(bld):
     EvalOnNodesImpl.cpp
 
     """,
-              includes = '. spitzerNuCalcData primMomentsCalcData binOpCalcData lagrangeFixData momentCalcData confToPhaseData', use='lib EIGEN MPI', target = 'gkupdater', name = 'updater', vum = '1.0')
+              includes = '. spitzerNuCalcData voronovCalcData primMomentsCalcData binOpCalcData lagrangeFixData momentCalcData confToPhaseData', use='lib EIGEN MPI', target = 'gkupdater', name = 'updater', vum = '1.0')
     

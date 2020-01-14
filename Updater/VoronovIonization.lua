@@ -44,227 +44,55 @@ function VoronovIonization:init(tbl)
    self._X = assert(tbl.X,
 		    "Updater.VoronovIonization: Must provide Voronov constant X using 'X'")
 
+   -- Dimension of configuration space.
+   self._cDim = confBasis:ndim()
+   -- Basis name and polynomial order.
+   self._basisID   = confBasis:id()
+   self._polyOrder = confBasis:polyOrder()
 
-   -- Number of quadrature points in each direction
-   self._N = tbl.numConfQuad and tbl.numConfQuad or self._confBasis:polyOrder() + 1
+   -- Number of basis functions.
+   self._numBasisC = confBasis:numBasis()
 
-   -- 1D configuration space weights and ordinates
-   local ordinates = GaussQuadRules.ordinates[self._N]
-   local weights = GaussQuadRules.weights[self._N]
-
-   local numConfDims = self._confBasis:ndim()
-   local l, u = {}, {}
-   for d = 1, numConfDims do l[d], u[d] = 1, self._N end
-   local quadRange = Range.Range(l, u) -- for looping over quadrature nodes
-   local numOrdinates = quadRange:volume() -- number of ordinates
-   -- construct weights and ordinates for integration in multiple dimensions
-   self._confOrdinates = Lin.Mat(numOrdinates, numConfDims)
-   local nodeNum = 1
-   for idx in quadRange:colMajorIter() do
-      for d = 1, numConfDims do
-	 self._confOrdinates[nodeNum][d] = ordinates[idx[d]]
-      end
-      nodeNum = nodeNum + 1
-   end
-   local numBasis = self._confBasis:numBasis()
-   self._confBasisAtOrdinates = Lin.Mat(numOrdinates, numBasis)
-   -- pre-compute values of basis functions at quadrature nodes
-   for n = 1, numOrdinates do
-      self._confBasis:evalBasis(self._confOrdinates[n],
-				self._confBasisAtOrdinates[n])
-   end
-
-   local numPhaseDims = self._phaseBasis:ndim()
-   for d = 1, numPhaseDims do l[d], u[d] = 1, self._N end
-   quadRange = Range.Range(l, u) -- for looping over quadrature nodes
-   numOrdinates = quadRange:volume() -- number of ordinates
-   -- construct weights and ordinates for integration in multiple dimensions
-   self._phaseOrdinates = Lin.Mat(numOrdinates, numPhaseDims)
-   self._phaseWeights = Lin.Vec(numOrdinates)
-   nodeNum = 1
-   for idx in quadRange:colMajorIter() do
-      self._phaseWeights[nodeNum] = 1.0
-      for d = 1, numPhaseDims do
-	 self._phaseWeights[nodeNum] =
-	    self._phaseWeights[nodeNum] * weights[idx[d]]
-	 self._phaseOrdinates[nodeNum][d] = ordinates[idx[d]]
-      end
-      nodeNum = nodeNum + 1
-   end
-   numBasis = self._phaseBasis:numBasis()
-   self._phaseBasisAtOrdinates = Lin.Mat(numOrdinates, numBasis)
-   -- pre-compute values of basis functions at quadrature nodes
-   for n = 1, numOrdinates do
-      self._phaseBasis:evalBasis(self._phaseOrdinates[n],
-				 self._phaseBasisAtOrdinates[n])
-   end
-
-   -- timings
-   self._tmEvalMom = 0.0
-   self._tmProjectMaxwell = 0.0
+   -- Define Voronov kernel
+   self._VoronovReactRateCellAv = VoronovDecl.selectCellAveVoronov(self._basisID, self._cDim, self._polyOrder)
+  
 end
 
 ----------------------------------------------------------------------
 -- Updater Advance ---------------------------------------------------
 function VoronovIonization:_advance(tCurr, inFld, outFld)
-   local numConfDims = self._confGrid:ndim()
-   local numConfBasis = self._confBasis:numBasis()
-   local numPhaseDims = self._phaseGrid:ndim()
-   local numPhaseBasis = self._phaseBasis:numBasis()
-   local numVelDims = numPhaseDims - numConfDims
 
-   -- Define regions for looping over ordinates
-   local l, u = {}, {}
-   for d = 1, numConfDims do l[d], u[d] = 1, self._N end
-   local confQuadRange = Range.Range(l, u)
-   local confQuadIndexer = Range.makeColMajorGenIndexer(confQuadRange)
-   for d = 1, numPhaseDims do l[d], u[d] = 1, self._N end
-   local phaseQuadRange = Range.Range(l, u)
-   local phaseQuadIndexer = Range.makeColMajorGenIndexer(phaseQuadRange)
-   local phaseIdx = {}
+   local grid = self._onGrid
 
-   -- Vorozon coefficient at quadrature points
-   local numConfOrdinates = confQuadRange:volume()
-   local vorozonCoefOrd = Lin.Vec(numConfOrdinates)
-   -- Additional variables which we don't want to allocate inside the
-   -- loops
-   local elcM0Ord, elcM2Ord = 0.0, 0.0
-   local elcM1iOrd = Lin.Vec(numVelDims)
-   local U, u2, vth2, Te = 0.0, 0.0, 0.0, 0.0
-   local confMu, phaseMu = 0, 0
-   local offset = 0
-   local numPhaseOrdinates = phaseQuadRange:volume()
-   local RHS = Lin.Vec(numPhaseBasis)
-   local fOrd = Lin.Vec(numPhaseOrdinates)
-
-   -- Timings
-   -- local tmEvalMomStart = 0.0
-   -- local tmProjectMaxwellStart = 0.0
-
-   -- Get the inputs and outputs
-   local elcM0 = assert(inFld[1],
-			"VoronovIonization.advance: Must specify an input fluid moments field")
-   local elcM1i = assert(inFld[2],
-			 "VoronovIonization.advance: Must specify an input fluid moments field")
-   local elcM2 = assert(inFld[3],
-			"VoronovIonization.advance: Must specify an input fluid moments field")
-
-   local fOut = assert(outFld['fOut'],
-			  "VoronovIonization.advance: Must specify an output field")
-   --local fIonOut = assert(outFld['ion'],
-			  --"VoronovIonization.advance: Must specify an ion output field")
-   local fNeutIn = assert(outFld['neutIn'],
-				"VoronovIonization.advance: Must specify a neutral output field on fOut mesh")
-   --local fNeutOnIonOut = assert(outFld['neutOnIon'],
-				--"VoronovIonization.advance: Must specify a neutral output field on ion mesh")
-
-   local elcM0Itr = elcM0:get(1)
-   local elcM1iItr = elcM1i:get(1)
-   local elcM2Itr = elcM2:get(1)
-   local fOutItr = fOut:get(1)
-   --local fIonItr = fIonOut:get(1) -- Is this needed for both? 
-   local fNeutInItr = fNeutIn:get(1) 
-   --local fNeutOnIonItr = fNeutOnIonOut:get(1) -- Is this needed for both?
+   local elcM0    = inFld[1]
+   local elcVtSq  = inFld[2]
+   local nuIz     = outFld[1]
+   
+   local elcM0Itr   = elcM0:get(1)
+   local elcVtSqItr = elcVtSq:get(1)
+   local nuIzIter   = nuIz:get(1)
 
    -- Get the Ranges to loop over the domain
    local confRange = elcM0:localRange()
    local confIndexer = elcM0:genIndexer()
-   local phaseRange = fOut:localRange()
-   local phaseIndexer = fOut:genIndexer()
-   --local phaseRangeIon = fIonOut:localRange()
-   --local phaseIndexerIon = fIonOut:genIndexer()
-   local l, u = {}, {}
-   for d = 1, numVelDims do
-      l[d] = phaseRange:lower(numConfDims + d)
-      u[d] = phaseRange:upper(numConfDims + d)
-      --li[d] = phaseRangeIon:lower(numConfDims + d)
-      --ui[d] = phaseRangeIon:upper(numConfDims + d)
-   end
-   local velRange = Range.Range(l, u)
 
+   if self.onGhosts then confRange = m0Self:localExtRange() end
+
+   -- Construct ranges for nested loops.
+   local confRangeDecomp = LinearDecomp.LinearDecompRange {
+      range = confRange:selectFirst(self._cDim), numSplit = grid:numSharedProcs() }
+   local tId = grid:subGridSharedId() -- Local thread ID.
+   
    -- Configuration space loop
-   for confIdx in confRange:colMajorIter() do
-      elcM0:fill(confIndexer(confIdx), elcM0Itr)
-      elcM1i:fill(confIndexer(confIdx), elcM1iItr)
-      elcM2:fill(confIndexer(confIdx), elcM2Itr)
+   for cIdx in confRange:colMajorIter(tId) do
+      
+      elcM0:fill(confIndexer(cIdx), elcM0Itr)
+      elcVtSq:fill(confIndexer(cIdx), elcVtSqItr)
+      nuIz:fill(confIndexer(cIdx), nuIzItr)
 
-      -- Evaluate the the moments (given as expansion coefficients)
-      -- on the ordinates
-      local tmEvalMomStart = Time.clock()
-      for muIdx in confQuadRange:colMajorIter() do
-      	 confMu = confQuadIndexer(muIdx)
-      	 elcM0Ord = 0
-      	 for d = 1, numVelDims do elcM1iOrd[d] = 0 end
-      	 elcM2Ord = 0
-      	 for k = 1, numConfBasis do
-      	    elcM0Ord = elcM0Ord +
-      	       elcM0Itr[k] * self._confBasisAtOrdinates[confMu][k]
-      	    elcM2Ord = elcM2Ord +
-      	       elcM2Itr[k] * self._confBasisAtOrdinates[confMu][k]
-      	 end
-      	 offset = 0
-      	 for d = 1, numVelDims do
-      	    for k = 1, numConfBasis do
-      	       elcM1iOrd[d] = elcM1iOrd[d] +
-      		  elcM1iItr[offset + k] * self._confBasisAtOrdinates[confMu][k]
-      	    end
-      	    offset = offset + numConfBasis
-      	 end
-
-      	 -- Calculate the temperature
-      	 u2 = 0
-      	 for d = 1, numVelDims do
-      	    u2 = u2 + elcM1iOrd[d]*elcM1iOrd[d] / (elcM0Ord*elcM0Ord)
-      	 end
-      	 vth2 = elcM2Ord / elcM0Ord - u2
-      	 Te = 0.5*self._elcMass*vth2 / self._elemCharge -- temperature in eV
-      	 U = self._E/Te
-      	 vorozonCoefOrd[confMu] = elcM0Ord * self._A * (1+self._P*U) / (self._X+U) *
-      	    math.pow(U, self._K) * math.exp(-U)
-      	 --print("vorozonCoefOrd = ",vorozonCoefOrd[confMu]," from Voronov updater at t = ", tCurr)
-	 
-      end
-      self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
-
-      tmProjectMaxwellStart = Time.clock()
-      -- Velocity space loop
-      for velIdx in velRange:colMajorIter() do
-	 -- Construct the phase space index out of the configuration
-	 -- space and velocity space indices
-	 for d = 1, numConfDims do phaseIdx[d] = confIdx[d] end
-	 for d = 1, numVelDims do phaseIdx[d + numConfDims] = velIdx[d] end
-	 fOut:fill(phaseIndexer(phaseIdx), fOutItr)
-	 fNeutIn:fill(phaseIndexer(phaseIdx), fNeutInItr)
-
-	 for k = 1, numPhaseBasis do RHS[k] = 0 end
-	 for muIdx in phaseQuadRange:colMajorIter() do
-	    confMu = confQuadIndexer(muIdx)
-	    phaseMu = phaseQuadIndexer(muIdx)
-
-	    -- Project on basis
-	    fOrd = 0.0
-	    for k = 1, numPhaseBasis do -- evaluation
-	       fOrd = fOrd + self._phaseBasisAtOrdinates[phaseMu][k] * fNeutInItr[k]
-	    end
-	    for k = 1, numPhaseBasis do -- integral
-	       RHS[k] = RHS[k] +
-		  self._phaseWeights[phaseMu] * vorozonCoefOrd[confMu] *
-		  self._phaseBasisAtOrdinates[phaseMu][k] * fOrd
-	    end
-	 end
-	 -- Increment RHSs
-	 for k = 1, numPhaseBasis do
-	    fOutItr[k] = fOutItr[k] + RHS[k]
-	    --fNeutInItr[k] = fNeutInItr[k] - RHS[k]
-	 end
-      end
-
-      self._tmProjectMaxwell = self._tmProjectMaxwell + Time.clock() -
-       	 tmProjectMaxwellStart
+      self._VoronovReactRateCalc(self._elemCharge, self._elcMass, elcM0Iter:data(), elcVtSqIter:data(), nuIzItr:data(), self._E, self._A, self._K, self._P, self._X)
+     
    end
 end
-
-function VoronovIonization:evalMomTime() return self._tmEvalMom end
-function VoronovIonization:projectMaxwellTime() return self._tmProjectMaxwell end
 
 return VoronovIonization

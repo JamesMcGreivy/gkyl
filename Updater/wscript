@@ -4,9 +4,10 @@
 ## + 6 @ |||| # P ||| +
 
 import os
+from waflib import Utils
 
 def build(bld):
-    bld.shlib(source = r"""
+    sources = r"""
     MomentSrcCommon.cpp
     FiveMomentSrcImpl.cpp
     TenMomentSrcImpl.cpp
@@ -210,7 +211,18 @@ def build(bld):
 
     ProjectOnBasisImpl.cpp
     EvalOnNodesImpl.cpp
+    """
 
-    """,
-              includes = '. spitzerNuCalcData voronovCalcData primMomentsCalcData binOpCalcData lagrangeFixData momentCalcData confToPhaseData', use='lib EIGEN MPI', target = 'gkupdater', name = 'updater', vum = '1.0')
+    # CUDA specific code
+    if bld.env['CUTOOLS_FOUND']:
+        cusources = 'momentCalcData/DistFuncMomentCalcSer1x1v.cpp momentCalcData/DistFuncMomentCalcDeviceCommon.cu momentCalcData/DistFuncMomentCalcSer1x1vDevice.cu'
+        
+        bld(source = cusources,
+            name = 'updater_cu', target='updater_cu',
+            includes = '. .. ../Cuda ../Grid ../Lib momentCalcData', features = 'cxx nvcc cushlib'
+        )
+
+    bld.shlib(source = sources,
+              includes = '. .. ../Cuda voronovCalcData spitzerNuCalcData primMomentsCalcData binOpCalcData lagrangeFixData momentCalcData confToPhaseData', use='lib EIGEN MPI', target = 'updater', name = 'updater', vum = '1.0')
+
     

@@ -20,9 +20,11 @@ out = 'build'
 # extra flags to pass to linker
 EXTRA_LINK_FLAGS = []
 
+from waflib import TaskGen
+
 def options(opt):
     opt.load('compiler_c compiler_cxx') 
-    opt.load('gkyl luajit mpi adios eigen sqlite3',
+    opt.load('gkyl luajit mpi adios eigen sqlite3 cutools',
              tooldir='waf_tools')
 
 def configure(conf):
@@ -30,12 +32,14 @@ def configure(conf):
 
     # load tools
     conf.load('compiler_c compiler_cxx')
+    conf.load('cutools', tooldir='waf_tools')
     conf.check_gkyl()
     conf.check_luajit()
     conf.check_mpi()
     conf.check_adios()
     conf.check_eigen()
     conf.check_sqlite3()
+    conf.check_cutools()
 
     # standard install location for dependencies
     gkydepsDir = os.path.expandvars('$HOME/gkylsoft')
@@ -72,6 +76,8 @@ def build(bld):
     bld.recurse("Proto")
     bld.recurse("Unit")
     bld.recurse("Updater")
+    if bld.env['CUTOOLS_FOUND']:
+        bld.recurse("Cuda")
 
     # Sometimes there is an issue with an existing build of sqlite on
     # a Linux machine. In that case, sqlite support can be
@@ -81,7 +87,7 @@ def build(bld):
         bld.recurse("sqlite3")
 
     # build executable
-    buildExec(bld)    
+    buildExec(bld)
 
     ### install LuaJIT code
 
@@ -177,6 +183,13 @@ def build(bld):
         App_dir.ant_glob('**/*.lua'),
         cwd=App_dir, relative_trick=True)
 
+    # - Cuda
+    Cuda_dir = bld.path.find_dir('Cuda')
+    bld.install_files(
+        "${PREFIX}/bin/Cuda",
+        Cuda_dir.ant_glob('**/*.lua'),
+        cwd=Cuda_dir, relative_trick=True)
+
     # - Comm
     Comm_dir = bld.path.find_dir('Comm')
     bld.install_files(
@@ -225,9 +238,12 @@ def buildExec(bld):
         bld.env.SHLIB_MARKER = '-Wl,-Bdynamic,--no-as-needed'
 
     # list of objects to use
-    useList = 'lib datastruct eq unit comm updater proto basis grid LUAJIT ADIOS EIGEN MPI M DL'
+    useList = ' lib datastruct eq unit comm updater proto basis grid LUAJIT ADIOS EIGEN MPI M DL '
     if bld.env['USE_SQLITE']:
         useList = 'sqlite3 ' + useList
+    if bld.env['CUTOOLS_FOUND']:
+        useListCuda = ' cuda CUTOOLS lib_cu datastruct_cu eq_cu unit_cu comm_cu updater_cu proto_cu basis_cu grid_cu '
+        useList = useListCuda + useList
 
     # set RPATH
     fullRpath = []
@@ -235,14 +251,15 @@ def buildExec(bld):
     appendToList(fullRpath, bld.env.LIBDIR)
     appendToList(fullRpath, bld.env.LIBPATH_LUAJIT)
 
+
     # build gkyl executable
     bld.program(
-        source ='gkyl.cxx', target='gkyl',
+        source = 'gkyl.cxx', target='gkyl',
         includes = 'Unit Lib Comm',
         use = useList,
         linkflags = EXTRA_LINK_FLAGS,
         rpath = fullRpath,
-        lib = 'pthread ' + bld.env.EXTRALIBS
+        lib = 'pthread ' + bld.env.EXTRALIBS,
     )
 
 def dist(ctx):

@@ -142,7 +142,7 @@ function VlasovSpecies:createSolver(hasE, hasB)
          onGrid     = self.grid,
          phaseBasis = self.basis,
          confBasis  = self.confBasis,
-         moment     = "FiveMomentsLBO",
+	 moment     = "FiveMomentsLBO",
       }
       if self.needCorrectedSelfPrimMom then
          self.primMomSelf = Updater.SelfPrimMoments {
@@ -223,6 +223,8 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
             local selfColl, crossColl, collSpecs = false, false, {}
             -- Obtain the boolean indicating if self/cross collisions affect the sN species.
             for collNm, _ in pairs(species[sN].collisions) do
+	       -- Adding some print stmts to debug Voronov
+	       -- print('Collisions for sN = ', species[sN].name, 'are', collNm)
                selfColl  = selfColl or species[sN].collisions[collNm].selfCollisions
                crossColl = crossColl or species[sN].collisions[collNm].crossCollisions
                collSpecs = tableConcat(collSpecs, species[sN].collisions[collNm].collidingSpecies)
@@ -391,6 +393,7 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
       end
    end
 
+   self.needSelfPrimMom = true -- HARDCODED
    if self.needSelfPrimMom then
       -- Allocate fields to store self-species primitive moments.
       self.uSelf    = self:allocVectorMoment(self.vdim)
@@ -469,6 +472,11 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
             end
          end
       end
+   end
+   
+   self.voronov = true -- HARDCODED
+   if (self.name == 'elc') then --CHECK THIS
+      self.voronovReactRate = self:allocMoment()
    end
 
 end
@@ -863,17 +871,19 @@ function VlasovSpecies:appendBoundaryConditions(dir, edge, bcType)
    end
 end
 
-function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx)
+function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species) --HARDCODED, added species to argument list
 
    local tmStart = Time.clock()
    -- Compute moments needed in coupling to fields and collisions.
    local fIn = self:rkStepperFields()[rkIdx]
    if self.needSelfPrimMom then
-      self.fiveMomentsLBOCalc:advance(tCurr, {fIn}, { self.numDensity, self.momDensity, self.ptclEnergy, 
+      --self.fiveMomentsLBOCalc:advance(tCurr, {fIn}, { self.numDensity, self.momDensity, self.ptclEnergy, --HARDCODED 
+      print('Calculating five moments within App:VlasovSpecies for...', self.name) -- HARDCODED print stmt
+      self.fiveMomentsCalc:advance(tCurr, {fIn}, { self.numDensity, self.momDensity, self.ptclEnergy,
                                                       self.m1Correction, self.m2Correction,
                                                       self.m0Star, self.m1Star, self.m2Star })
       if self.needCorrectedSelfPrimMom then
-         -- Also compute self-primitive moments u and vtSq.
+	 -- Also compute self-primitive moments u and vtSq.
          self.primMomSelf:advance(tCurr, {self.numDensity, self.momDensity, self.ptclEnergy,
                                           self.m1Correction, self.m2Correction, 
                                           self.m0Star, self.m1Star, self.m2Star}, {self.uSelf, self.vtSqSelf})
@@ -898,6 +908,12 @@ function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx)
       self.momentFlags[1] = true
    end
    self.tmCouplingMom = self.tmCouplingMom + Time.clock() - tmStart
+
+   if self.voronov and (self.name=="elc") then
+      -- compute voronov reaction self.vornovReactRate
+      print('calling Voronov for', self.name, 'from within App:VlasovSpecies')
+      species["elc"].collisions["ionization"].calcVoronovReactRate:advance(tCurr, {self.numDensity, self.vtSqSelf}, {self.voronovReactRate}) --check how to reference species and collisions
+   end 
 
 end
 
@@ -1025,6 +1041,10 @@ function VlasovSpecies:momCalcTime()
    return tm
 end
 
+function VlasovSpecies:getVoronovReactRate()
+   return self.voronovReactRate
+end
+   
 -- please test this for higher than 1x1v... 
 function VlasovSpecies:Maxwellian(xn, n0, T0, vdnIn)
    local vdn = vdnIn or {0, 0, 0}

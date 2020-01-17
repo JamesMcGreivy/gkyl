@@ -281,7 +281,7 @@ local function buildApplication(self, tbl)
    -- Compute the coupling moments.
    for nm, s in pairs(species) do
       s:clearMomentFlags(species)
-      s:calcCouplingMoments(0.0, 1)
+      s:calcCouplingMoments(0.0, 1, species) -- HARDCODED
    end
    -- Initialize field (sometimes requires species to have been initialized).
    field:createSolver(species, funcField)
@@ -374,7 +374,7 @@ local function buildApplication(self, tbl)
       for nm, s in pairs(species) do
 	 -- Compute moments needed in coupling with fields and
 	 -- collisions (the species should update internal datastructures). 
-         s:calcCouplingMoments(tCurr, inIdx)
+         s:calcCouplingMoments(tCurr, inIdx, species) -- HARDCODED
       end
 
       -- Update EM field.

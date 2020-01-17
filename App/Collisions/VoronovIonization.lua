@@ -47,9 +47,7 @@ function VoronovIonization:fullInit(speciesTbl)
    self.selfCollisions = false
    
    self.elcNm       = tbl.electrons
-   --self.ionNm       = tbl.ions
-   self.neutInNm      = tbl.collideWith[1] --Elc
-   --self.neutOnIonNm = tbl.neutralOnIon
+   self.neutInNm    = tbl.collideWith[1]
    self.plasma      = tbl.plasma
    self.mass        = tbl.elcMass
    self.charge      = tbl.elemCharge
@@ -92,34 +90,47 @@ end
 function VoronovIonization:createSolver(funcField) --species)
    -- will need to fetch information when neutrals have different grid than elc/ion
    -- could grab grid from current neutral species
-   self.collisionSlvr = Updater.VoronovIonization {
-      onGrid     = self.confGrid, --species[self.elcNm].confGrid,
-      confGrid   = self.confGrid, --species[self.elcNm].confGrid,
-      confBasis  = self.confBasis, --species[self.elcNm].confBasis,
-      phaseGrid  = self.phaseGrid, --species[self.elcNm].grid,
-      phaseBasis = self.phaseBasis, --species[self.elcNm].basis,
-      elcMass    = self.mass, --species[self.elcNm]:getMass(), 
-      elemCharge = self.charge, --math.abs(species[self.elcNm]:getCharge()),  
+   print('Creating Voronov solver for ', self.speciesName, 'in Collisions App')
+   if (self.speciesName == "elc") then 
+      self.calcVoronovReactRate = Updater.VoronovIonization {
+	 onGrid     = self.confGrid,
+	 confBasis  = self.confBasis,
+	 phaseGrid  = self.phaseGrid, 
+	 phaseBasis = self.phaseBasis,
+	 elcMass    = self.mass,
+	 elemCharge = self.charge, 
+      
+	 -- Voronov parameters
+	 A = self._A,
+	 E = self._E,
+	 K = self._K,
+	 P = self._P,
+	 X = self._X,
+      }
+   end
 
-      -- Voronov parameters
-      A = self._A,
-      E = self._E,
-      K = self._K,
-      P = self._P,
-      X = self._X,
+   self.phaseMul = Updater.CartFieldBinOp {
+         onGrid     = self.phaseGrid,
+         weakBasis  = self.phaseBasis,
+         fieldBasis = self.confBasis,
+         operation  = "Multiply",
+   }
+
+   self.voronovSrc = DataStruct.Field {
+      onGrid        = self.phaseGrid,
+      numComponents = self.phaseBasis:numBasis(),
+      ghost         = {1, 1},
    }
 end
 
--- NRM 11/13/18: this doesn't have the right signature...
-function VoronovIonization:advance(tCurr, fIn, species, fRhsOut) --idxIn, outIdx, species)
-   local elcMomFields = species[self.elcNm]:fluidMoments()
-   local spOutFields  = {}
-   -- for nm, sp in pairs(species) do
-   --    spOutFields[nm] = sp:rkStepperFields()[outIdx]
-   -- end
-   spOutFields['fOut']     = fRhsOut
-   spOutFields['neutIn']   = species[self.neutInNm]:getDistF()
-   self.collisionSlvr:advance(tCurr, elcMomFields, spOutFields)
+function VoronovIonization:advance(tCurr, fIn, species, fRhsOut)
+
+   local nuIz       = species[self.elcNm]:getVoronovReactRate()
+   local neutDistF  = species[self.neutInNm]:getDistF()
+
+   self.phaseMul:advance(tCurr, {nuIz, neutDistF}, {self.voronovSrc})
+
+   fRhsOut:accumulate(1.0,self.voronovSrc) -- HARDCODED for evolving ion/elc (not neut)
 end
 
 function VoronovIonization:write(tm, frame)

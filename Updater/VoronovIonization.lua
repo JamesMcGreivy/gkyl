@@ -54,8 +54,9 @@ function VoronovIonization:init(tbl)
    self._numBasisC = self._confBasis:numBasis()
 
    -- Define Voronov reaction rate
-   self._VoronovReactRateCellAv = VoronovDecl.selectCellAvVoronov(self._basisID, self._cDim, self._polyOrder)
-  
+   self._VoronovReactRateCalc = VoronovDecl.selectCellAvVoronov(self._basisID, self._cDim, self._polyOrder)
+
+   self.onGhosts = xsys.pickBool(false, tbl.onGhosts)
 end
 
 ----------------------------------------------------------------------
@@ -72,7 +73,7 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
    local elcVtSqItr = elcVtSq:get(1)
 
    local nuIz       = outFld[1]
-   local nuIzIter   = nuIz:get(1)
+   local nuIzItr   = nuIz:get(1)
 
    local confRange = elcM0:localRange()
    if self.onGhosts then confRange = elcM0:localExtRange() end
@@ -81,19 +82,18 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
    local confRangeDecomp = LinearDecomp.LinearDecompRange {
       range = confRange:selectFirst(self._cDim), numSplit = grid:numSharedProcs() }
    local tId = grid:subGridSharedId() -- Local thread ID.
-   print('tId in Voronov updater...', tId)
    
    -- Configuration space loop
-   print('Performing conf space loop in Updater:Voronov...')
-   for cIdx in confRange:rowMajorIter(tId) do
-      print('Within Voronov config loop...')
+   print('Attempting conf space loop in Updater:Voronov...')
+   for cIdx in confRangeDecomp:rowMajorIter(tId) do
       grid:setIndex(cIdx)
       
       elcM0:fill(confIndexer(cIdx), elcM0Itr)
       elcVtSq:fill(confIndexer(cIdx), elcVtSqItr)
       nuIz:fill(confIndexer(cIdx), nuIzItr)
 
-      self._VoronovReactRateCalc(self._elemCharge, self._elcMass, elcM0Iter:data(), elcVtSqIter:data(), nuIzItr:data(), self._E, self._A, self._K, self._P, self._X)
+      -- Check this function! 
+      self._VoronovReactRateCalc(self._elemCharge, self._elcMass, elcM0Itr:data(), elcVtSqItr:data(), self._E, self._A, self._K, self._P, self._X, nuIzItr:data())
      
    end
 end

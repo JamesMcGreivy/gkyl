@@ -223,8 +223,6 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
             local selfColl, crossColl, collSpecs = false, false, {}
             -- Obtain the boolean indicating if self/cross collisions affect the sN species.
             for collNm, _ in pairs(species[sN].collisions) do
-	       -- Adding some print stmts to debug Voronov
-	       -- print('Collisions for sN = ', species[sN].name, 'are', collNm)
                selfColl  = selfColl or species[sN].collisions[collNm].selfCollisions
                crossColl = crossColl or species[sN].collisions[collNm].crossCollisions
                collSpecs = tableConcat(collSpecs, species[sN].collisions[collNm].collidingSpecies)
@@ -530,9 +528,14 @@ function VlasovSpecies:advance(tCurr, species, emIn, inIdx, outIdx)
    end
    -- Perform the collision update.
    if self.evolveCollisions then
-      for _, c in pairs(self.collisions) do
-         c.collisionSlvr:setDtAndCflRate(self.dtGlobal[0], self.cflRateByCell)
-         c:advance(tCurr, fIn, species, fRhsOut)
+      for collNm, c in pairs(self.collisions) do -- HARDCODED, added collision name for debugging
+	 -- HARDCODED if stmt to do nothing if collisions are ionization
+	 if (collNm == 'ionization') then
+	    -- do nothing
+	 else
+	    c.collisionSlvr:setDtAndCflRate(self.dtGlobal[0], self.cflRateByCell)
+	 end
+	 c:advance(tCurr, fIn, species, fRhsOut)
          -- The full 'species' list is needed for the cross-species
          -- collisions.
       end
@@ -878,7 +881,6 @@ function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species) --HARDCODED, a
    local fIn = self:rkStepperFields()[rkIdx]
    if self.needSelfPrimMom then
       --self.fiveMomentsLBOCalc:advance(tCurr, {fIn}, { self.numDensity, self.momDensity, self.ptclEnergy, --HARDCODED 
-      print('Calculating five moments within App:VlasovSpecies for...', self.name) -- HARDCODED print stmt
       self.fiveMomentsCalc:advance(tCurr, {fIn}, { self.numDensity, self.momDensity, self.ptclEnergy,
                                                       self.m1Correction, self.m2Correction,
                                                       self.m0Star, self.m1Star, self.m2Star })
@@ -911,7 +913,6 @@ function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species) --HARDCODED, a
 
    if self.voronov and (self.name=="elc") then
       -- compute voronov reaction self.vornovReactRate
-      print('calling Voronov for', self.name, 'from within App:VlasovSpecies')
       species["elc"].collisions["ionization"].calcVoronovReactRate:advance(tCurr, {self.numDensity, self.vtSqSelf}, {self.voronovReactRate}) --check how to reference species and collisions
    end 
 

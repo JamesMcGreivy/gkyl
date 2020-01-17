@@ -73,7 +73,7 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
    local elcVtSqItr = elcVtSq:get(1)
 
    local nuIz       = outFld[1]
-   local nuIzItr   = nuIz:get(1)
+   local nuIzItr    = nuIz:get(1)
 
    local confRange = elcM0:localRange()
    if self.onGhosts then confRange = elcM0:localExtRange() end
@@ -84,7 +84,6 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
    local tId = grid:subGridSharedId() -- Local thread ID.
    
    -- Configuration space loop
-   print('Attempting conf space loop in Updater:Voronov...')
    for cIdx in confRangeDecomp:rowMajorIter(tId) do
       grid:setIndex(cIdx)
       

@@ -90,7 +90,7 @@ end
 function VoronovIonization:createSolver(funcField) --species)
    -- will need to fetch information when neutrals have different grid than elc/ion
    -- could grab grid from current neutral species
-   print('Creating Voronov solver for ', self.speciesName, 'in Collisions App')
+   -- print('Creating Voronov solver for ', self.speciesName, 'in Collisions App')
    if (self.speciesName == "elc") then 
       self.calcVoronovReactRate = Updater.VoronovIonization {
 	 onGrid     = self.confGrid,
@@ -137,15 +137,15 @@ function VoronovIonization:write(tm, frame)
 end
 
 function VoronovIonization:slvrTime()
-   return self.collisionSlvr.totalTime
+   return self.calcVoronovReactRate.totalTime
 end
 
 function VoronovIonization:momTime()
-   return self.collisionSlvr:evalMomTime()
+   return 0 -- self.calcVoronovReactRate:evalMomTime() -- HARDCODED cause I'm not sure what to do
 end
 
 function VoronovIonization:projectMaxwellTime()
-   return self.collisionSlvr:projectMaxwellTime()
+   return 0 -- self.calcVoronovReactRate:projectMaxwellTime()  -- HARDCODED cause I'm not sure what to do
 end
 
 return VoronovIonization

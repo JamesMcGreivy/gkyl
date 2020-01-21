@@ -17,7 +17,7 @@ for bInd : 1 thru length(bName) do (
 
    for pi : 1 thru polyOrderMax do (
      for ci : 1 thru 3 do (
-       printf(fh, "void VoronovReactRateCellAv~ax~a_P~a(const double elemCharge, const double m_, const double *m0, const double *vtS, const double E, const double A, const double K, const double P, const double X, double *nuIz); ~%", ci, bName[bInd], pi),
+       printf(fh, "void VoronovReactRate~ax~a_P~a(const double elemCharge, const double m_, const double *m0, const double *vtS, const double E, const double A, const double K, const double P, const double X, double *nuIz); ~%", ci, bName[bInd], pi),
        printf(fh, "~%")      
      ),
      printf(fh, "~%")

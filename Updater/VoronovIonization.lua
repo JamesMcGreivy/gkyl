@@ -24,10 +24,10 @@ function VoronovIonization:init(tbl)
 			  "Updater.VoronovIonization: Must provide grid object using 'onGrid'")
    self._confBasis = assert(tbl.confBasis,
 			    "Updater.VoronovIonization: Must provide configuration space basis object using 'confBasis'")
-   self._phaseGrid = assert(tbl.phaseGrid,
-			    "Updater.VoronovIonization: Must provide phase space grid object using 'phaseGrid'")
-   self._phaseBasis = assert(tbl.phaseBasis,
-			     "Updater.VoronovIonization: Must provide phase space basis object using 'phaseBasis'")
+   -- self._phaseGrid = assert(tbl.phaseGrid,
+   -- 			    "Updater.VoronovIonization: Must provide phase space grid object using 'phaseGrid'")
+   -- self._phaseBasis = assert(tbl.phaseBasis,
+   -- 			     "Updater.VoronovIonization: Must provide phase space basis object using 'phaseBasis'")
 
    self._elcMass = assert(tbl.elcMass,
 			  "Updater.VoronovIonization: Must provide electron mass using 'elcMass'")
@@ -54,7 +54,7 @@ function VoronovIonization:init(tbl)
    self._numBasisC = self._confBasis:numBasis()
 
    -- Define Voronov reaction rate
-   self._VoronovReactRateCalc = VoronovDecl.selectCellAvVoronov(self._basisID, self._cDim, self._polyOrder)
+   self._VoronovReactRateCalc = VoronovDecl.voronov(self._basisID, self._cDim, self._polyOrder)
 
    self.onGhosts = xsys.pickBool(false, tbl.onGhosts)
 end

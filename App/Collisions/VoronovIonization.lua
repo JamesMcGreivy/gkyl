@@ -95,8 +95,8 @@ function VoronovIonization:createSolver(funcField) --species)
       self.calcVoronovReactRate = Updater.VoronovIonization {
 	 onGrid     = self.confGrid,
 	 confBasis  = self.confBasis,
-	 phaseGrid  = self.phaseGrid, 
-	 phaseBasis = self.phaseBasis,
+	 --phaseGrid  = self.phaseGrid, 
+	 --phaseBasis = self.phaseBasis,
 	 elcMass    = self.mass,
 	 elemCharge = self.charge, 
       

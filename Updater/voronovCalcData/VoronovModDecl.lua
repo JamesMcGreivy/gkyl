@@ -13,9 +13,9 @@ local basisNmMap = { ["serendipity"] = "Ser", ["maximal-order"] = "Max" }
 
 local _M = {}
 
--- Select kernel function to compute cell-wise constant nu from Spitzer formula. 
-function _M.selectCellAvVoronov(basisNm, CDIM, polyOrder)
-   local funcNm = string.format("VoronovReactRateCellAv%dx%s_P%d", CDIM, basisNmMap[basisNm], polyOrder)
+-- Kernel function to compute Voronov reaction rate. 
+function _M.voronov(basisNm, CDIM, polyOrder)
+   local funcNm = string.format("VoronovReactRate%dx%s_P%d", CDIM, basisNmMap[basisNm], polyOrder)
    return ffi.C[funcNm]
 end
 

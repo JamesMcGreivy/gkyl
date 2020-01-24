@@ -20,6 +20,9 @@ def build(bld):
     voronovCalcData/VoronovMax2x.cpp
     voronovCalcData/VoronovMax3x.cpp
 
+    mgPoissonCalcData/MGpoissonSer1x.cpp
+    mgPoissonCalcData/MGpoissonSer2x.cpp
+
     spitzerNuCalcData/SpitzerNuSer1x.cpp
     spitzerNuCalcData/SpitzerNuSer2x.cpp
     spitzerNuCalcData/SpitzerNuSer3x.cpp
@@ -187,6 +190,8 @@ def build(bld):
     FemParPoissonImpl.cpp
     FemMatrices.cpp
     FemGyroaverageImpl.cpp
+
+    DiscontPoissonImpl.cpp
   
     confToPhaseData/ConfToPhaseMax1x1v.cpp
     confToPhaseData/ConfToPhaseMax1x2v.cpp
@@ -223,6 +228,10 @@ def build(bld):
         )
 
     bld.shlib(source = sources,
+<<<<<<< HEAD
               includes = '. .. ../Cuda voronovCalcData spitzerNuCalcData primMomentsCalcData binOpCalcData lagrangeFixData momentCalcData confToPhaseData', use='lib EIGEN MPI', target = 'updater', name = 'updater', vum = '1.0')
 
+=======
+              includes = '. .. ../Cuda mgPoissonCalcData spitzerNuCalcData primMomentsCalcData binOpCalcData lagrangeFixData momentCalcData confToPhaseData', use='lib EIGEN MPI', target = 'updater', name = 'updater', vum = '1.0')
+>>>>>>> master
     

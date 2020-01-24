@@ -138,7 +138,8 @@ function VoronovIonization:advance(tCurr, fIn, species, fRhsOut)
    else
       fRhsOut:accumulate(-1.0,self.voronovSrc) -- HARDCODED for evolving neutrals
    end
-
+end
+   
 function VoronovIonization:write(tm, frame)
 end
 

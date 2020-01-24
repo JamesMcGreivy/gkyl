@@ -1,6 +1,6 @@
 #include <VoronovModDecl.h> 
 #include <math.h> 
-void VoronovReactRate2xSer_P1(const double elemCharge, const double m_, const double *m0, const double *vtSq, const double E, const double A, const double K, const double P, const double X, double *nuIz) 
+void VoronovReactRate2xSer_P1(const double elemCharge, const double m_, const double *m0, const double *vtSq, const double E, const double A, const double K, const double P, const double X, const double T, double *nuIz) 
 { 
   // elemCharge: elementary charge (J - eV conversion factor). 
   // E:   	  Voronov ionization energy. 
@@ -15,8 +15,7 @@ void VoronovReactRate2xSer_P1(const double elemCharge, const double m_, const do
  
   double n0 = 0.5*m0[0]; 
   double vtSq0 = 0.5*vtSq[0]; 
-  double T0 = (0.5*vtSq[0]*m_)/elemCharge; 
-  double U = E/T0; 
+  double U = E/T; 
  
     nuIz[0] = (m0[0]*A*P*pow(U,K+1/2))/(1000000.0*X*exp(U)+1000000.0*U*exp(U))+(m0[0]*A*pow(U,K))/(1000000.0*X*exp(U)+1000000.0*U*exp(U)); 
     nuIz[1] = (m0[1]*A*P*pow(U,K+1/2))/(1000000.0*X*exp(U)+1000000.0*U*exp(U))+(m0[1]*A*pow(U,K))/(1000000.0*X*exp(U)+1000000.0*U*exp(U)); 
@@ -24,7 +23,7 @@ void VoronovReactRate2xSer_P1(const double elemCharge, const double m_, const do
     nuIz[3] = (m0[3]*A*P*pow(U,K+1/2))/(1000000.0*X*exp(U)+1000000.0*U*exp(U))+(m0[3]*A*pow(U,K))/(1000000.0*X*exp(U)+1000000.0*U*exp(U)); 
 } 
  
-void VoronovReactRate2xSer_P2(const double elemCharge, const double m_, const double *m0, const double *vtSq, const double E, const double A, const double K, const double P, const double X, double *nuIz) 
+void VoronovReactRate2xSer_P2(const double elemCharge, const double m_, const double *m0, const double *vtSq, const double E, const double A, const double K, const double P, const double X, const double T, double *nuIz) 
 { 
   // elemCharge: elementary charge (J - eV conversion factor). 
   // E:   	  Voronov ionization energy. 
@@ -39,8 +38,7 @@ void VoronovReactRate2xSer_P2(const double elemCharge, const double m_, const do
  
   double n0 = 0.5*m0[0]; 
   double vtSq0 = 0.5*vtSq[0]; 
-  double T0 = (0.5*vtSq[0]*m_)/elemCharge; 
-  double U = E/T0; 
+  double U = E/T; 
  
     nuIz[0] = (m0[0]*A*P*pow(U,K+1/2))/(1000000.0*X*exp(U)+1000000.0*U*exp(U))+(m0[0]*A*pow(U,K))/(1000000.0*X*exp(U)+1000000.0*U*exp(U)); 
     nuIz[1] = (m0[1]*A*P*pow(U,K+1/2))/(1000000.0*X*exp(U)+1000000.0*U*exp(U))+(m0[1]*A*pow(U,K))/(1000000.0*X*exp(U)+1000000.0*U*exp(U)); 
@@ -52,7 +50,7 @@ void VoronovReactRate2xSer_P2(const double elemCharge, const double m_, const do
     nuIz[7] = (m0[7]*A*P*pow(U,K+1/2))/(1000000.0*X*exp(U)+1000000.0*U*exp(U))+(m0[7]*A*pow(U,K))/(1000000.0*X*exp(U)+1000000.0*U*exp(U)); 
 } 
  
-void VoronovReactRate2xSer_P3(const double elemCharge, const double m_, const double *m0, const double *vtSq, const double E, const double A, const double K, const double P, const double X, double *nuIz) 
+void VoronovReactRate2xSer_P3(const double elemCharge, const double m_, const double *m0, const double *vtSq, const double E, const double A, const double K, const double P, const double X, const double T, double *nuIz) 
 { 
   // elemCharge: elementary charge (J - eV conversion factor). 
   // E:   	  Voronov ionization energy. 
@@ -67,8 +65,7 @@ void VoronovReactRate2xSer_P3(const double elemCharge, const double m_, const do
  
   double n0 = 0.5*m0[0]; 
   double vtSq0 = 0.5*vtSq[0]; 
-  double T0 = (0.5*vtSq[0]*m_)/elemCharge; 
-  double U = E/T0; 
+  double U = E/T; 
  
     nuIz[0] = (m0[0]*A*P*pow(U,K+1/2))/(1000000.0*X*exp(U)+1000000.0*U*exp(U))+(m0[0]*A*pow(U,K))/(1000000.0*X*exp(U)+1000000.0*U*exp(U)); 
     nuIz[1] = (m0[1]*A*P*pow(U,K+1/2))/(1000000.0*X*exp(U)+1000000.0*U*exp(U))+(m0[1]*A*pow(U,K))/(1000000.0*X*exp(U)+1000000.0*U*exp(U)); 

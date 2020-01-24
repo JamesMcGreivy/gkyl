@@ -51,6 +51,7 @@ function VoronovIonization:fullInit(speciesTbl)
    self.plasma      = tbl.plasma
    self.mass        = tbl.elcMass
    self.charge      = tbl.elemCharge
+   self.temp        = tbl.elcTemp -- in [eV], HARDCODED
 
    if self.plasma == "H" then
       self._E = 13.6
@@ -98,7 +99,7 @@ function VoronovIonization:createSolver(funcField) --species)
 	 --phaseGrid  = self.phaseGrid, 
 	 --phaseBasis = self.phaseBasis,
 	 elcMass    = self.mass,
-	 elemCharge = self.charge, 
+	 elemCharge = self.charge,
       
 	 -- Voronov parameters
 	 A = self._A,
@@ -106,6 +107,7 @@ function VoronovIonization:createSolver(funcField) --species)
 	 K = self._K,
 	 P = self._P,
 	 X = self._X,
+	 T = self.temp,
       }
    end
 
@@ -124,11 +126,12 @@ function VoronovIonization:createSolver(funcField) --species)
 end
 
 function VoronovIonization:advance(tCurr, fIn, species, fRhsOut)
-
+   
    local nuIz       = species[self.elcNm]:getVoronovReactRate()
    local neutDistF  = species[self.neutInNm]:getDistF()
 
    self.phaseMul:advance(tCurr, {nuIz, neutDistF}, {self.voronovSrc})
+   --self.voronovSrc:write(string.format("voronovSrc_%d.bp",tCurr*1e11),tCurr)
 
    fRhsOut:accumulate(1.0,self.voronovSrc) -- HARDCODED for evolving ion/elc (not neut)
 end

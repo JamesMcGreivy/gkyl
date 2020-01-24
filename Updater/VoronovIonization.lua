@@ -33,6 +33,8 @@ function VoronovIonization:init(tbl)
 			  "Updater.VoronovIonization: Must provide electron mass using 'elcMass'")
    self._elemCharge = assert(tbl.elemCharge,
 			     "Updater.VoronovIonization: Must provide elementary charge using 'elemCharge'")
+   self._T = assert(tbl.T, 
+		       "Updater.VoronovIonization: Must provide electron temp [eV] using 'elcTemp'")
    self._A = assert(tbl.A,
 		    "Updater.VoronovIonization: Must provide Voronov constant A using 'A'")
    self._E = assert(tbl.E,
@@ -92,7 +94,7 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
       nuIz:fill(confIndexer(cIdx), nuIzItr)
 
       -- Check this function! 
-      self._VoronovReactRateCalc(self._elemCharge, self._elcMass, elcM0Itr:data(), elcVtSqItr:data(), self._E, self._A, self._K, self._P, self._X, nuIzItr:data())
+      self._VoronovReactRateCalc(self._elemCharge, self._elcMass, elcM0Itr:data(), elcVtSqItr:data(), self._E, self._A, self._K, self._P, self._X, self._T, nuIzItr:data())
      
    end
 end

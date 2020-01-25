@@ -133,7 +133,7 @@ function VoronovIonization:advance(tCurr, fIn, species, fRhsOut)
    self.phaseMul:advance(tCurr, {nuIz, neutDistF}, {self.voronovSrc})
    --self.voronovSrc:write(string.format("voronovSrc_%d.bp",tCurr*1e11),tCurr)
    
-   if (self.speciesName == 'elc') or self (self.speciesName == 'ion') then
+   if (self.speciesName == "elc") or (self.speciesName == "ion") then
       fRhsOut:accumulate(1.0,self.voronovSrc) -- HARDCODED for evolving ion/elc
    else
       fRhsOut:accumulate(-1.0,self.voronovSrc) -- HARDCODED for evolving neutrals

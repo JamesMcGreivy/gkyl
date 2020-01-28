@@ -44,14 +44,18 @@ function VoronovIonization:fullInit(speciesTbl)
 
    self.collidingSpecies = assert(tbl.collideWith, "App.VoronovIonization: Must specify names of species to collide with in 'collideWith'.")
 
-   self.selfCollisions = false
+   -- Set these values to be consistent with other collision apps
+   self.selfCollisions  = false
+   self.crossCollisions = true              
+   self.varNu           = false
+   self.timeDepNu       = false
+   self.collFreqs       = {1}
    
    self.elcNm       = tbl.electrons
-   self.neutInNm    = tbl.collideWith[1]
+   self.collideNm   = tbl.collideWith[1]
    self.plasma      = tbl.plasma
    self.mass        = tbl.elcMass
    self.charge      = tbl.elemCharge
-   self.temp        = tbl.elcTemp -- in [eV], HARDCODED
 
    if self.plasma == "H" then
       self._E = 13.6
@@ -91,8 +95,7 @@ end
 function VoronovIonization:createSolver(funcField) --species)
    -- will need to fetch information when neutrals have different grid than elc/ion
    -- could grab grid from current neutral species
-   -- print('Creating Voronov solver for ', self.speciesName, 'in Collisions App')
-   if (self.speciesName == "elc") then 
+   if (self.speciesName == self.elcNm) then 
       self.calcVoronovReactRate = Updater.VoronovIonization {
 	 onGrid     = self.confGrid,
 	 confBasis  = self.confBasis,
@@ -107,11 +110,10 @@ function VoronovIonization:createSolver(funcField) --species)
 	 K = self._K,
 	 P = self._P,
 	 X = self._X,
-	 T = self.temp,
       }
    end
 
-   self.phaseMul = Updater.CartFieldBinOp {
+   self.collisionSlvr = Updater.CartFieldBinOp {
          onGrid     = self.phaseGrid,
          weakBasis  = self.phaseBasis,
          fieldBasis = self.confBasis,
@@ -127,16 +129,17 @@ end
 
 function VoronovIonization:advance(tCurr, fIn, species, fRhsOut)
    
-   local nuIz       = species[self.elcNm]:getVoronovReactRate()
-   local neutDistF  = species[self.neutInNm]:getDistF()
+   local nuIz = species[self.elcNm]:getVoronovReactRate()
 
-   self.phaseMul:advance(tCurr, {nuIz, neutDistF}, {self.voronovSrc})
-   --self.voronovSrc:write(string.format("voronovSrc_%d.bp",tCurr*1e11),tCurr)
-   
-   if (self.speciesName == "elc") or (self.speciesName == "ion") then
-      fRhsOut:accumulate(1.0,self.voronovSrc) -- HARDCODED for evolving ion/elc
+   -- Check whether particle is neutral or plasma species
+   if (species[self.speciesName].charge == 0) then
+      local neutDistF = species[self.speciesName]:getDistF()
+      self.collisionSlvr:advance(tCurr, {nuIz, neutDistF}, {self.voronovSrc})
+      fRhsOut:accumulate(-1.0,self.voronovSrc)
    else
-      fRhsOut:accumulate(-1.0,self.voronovSrc) -- HARDCODED for evolving neutrals
+      local neutDistF = species[self.collideNm]:getDistF()
+      self.collisionSlvr:advance(tCurr, {nuIz, neutDistF}, {self.voronovSrc})
+      fRhsOut:accumulate(1.0,self.voronovSrc)
    end
 end
    
@@ -144,15 +147,19 @@ function VoronovIonization:write(tm, frame)
 end
 
 function VoronovIonization:slvrTime()
-   return self.calcVoronovReactRate.totalTime
+   return self.collisionSlvr.totalTime
 end
 
 function VoronovIonization:momTime()
-   return 0 -- self.calcVoronovReactRate:evalMomTime() -- HARDCODED cause I'm not sure what to do
+    if (self.speciesName == self.elcNm) then 
+       return self.calcVoronovReactRate:evalMomTime()
+    else
+       return 0
+    end
 end
 
 function VoronovIonization:projectMaxwellTime()
-   return 0 -- self.calcVoronovReactRate:projectMaxwellTime()  -- HARDCODED cause I'm not sure what to do
+   return self.collisionSlvr:projectMaxwellTime()
 end
 
 return VoronovIonization

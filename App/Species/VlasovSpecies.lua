@@ -325,7 +325,7 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
          for sO, _ in pairs(species) do
             if species[sO].collisions and next(species[sO].collisions) then 
                for collNmO, _ in pairs(species[sO].collisions) do
-                  if self.collPairs[sO][sN].on then
+		  if self.collPairs[sO][sN].on then
                      -- Species sO collides with sN. For computing cross-primitive moments,
                      -- species sO may need the sN-sO collision frequency. Set it such 
                      -- that m_sN*nu_{sN sO}=m_sO*nu_{sO sN}.
@@ -339,7 +339,7 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
                               -- We will need to first project the nu we do have, and later scale it by the mass ratio.
                               self.collPairs[sN][sO].nu = species[sO].collisions[collNmO].collFreqs[specInd]
                            else
-                              self.collPairs[sN][sO].nu = (species[sO]:getMass()/species[sN]:getMass())*species[sO].collisions[collNmO].collFreqs[specInd]
+			      self.collPairs[sN][sO].nu = (species[sO]:getMass()/species[sN]:getMass())*species[sO].collisions[collNmO].collFreqs[specInd]
                            end
                         else
                            -- Normalized collisionality to be scaled (e.g. by n_r/(v_{ts}^2+v_{tr}^2)^(3/2)).
@@ -367,6 +367,7 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
    -- profile for the collisionality (which needs to be projected).
    local needVarNu               = false
    local userInputNuProfile      = false
+   
    if self.collPairs[self.name][self.name].on then
       self.needSelfPrimMom          = true
       if (self.collPairs[self.name][self.name].kind=="GkLBO") or
@@ -391,7 +392,24 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
       end
    end
 
-   self.needSelfPrimMom = true -- HARDCODED
+   for sN, _ in pairs(species) do
+      if species[sN].collisions and next(species[sN].collisions) then 
+         for sO, _ in pairs(species) do
+	    if self.collPairs[sN][sO].on then
+	       if (self.collPairs[sN][sO].kind == 'Voronov') then
+		  for collNm, _ in pairs(species[sN].collisions) do
+		     if self.name==species[sN].collisions[collNm].elcNm then
+			self.needSelfPrimMom = true
+			self.calcReactRate   = true
+			self.collNmVoronov   = collNm
+		     end
+		  end
+	       end
+	    end
+	 end
+      end
+   end
+
    if self.needSelfPrimMom then
       -- Allocate fields to store self-species primitive moments.
       self.uSelf    = self:allocVectorMoment(self.vdim)
@@ -472,8 +490,7 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
       end
    end
    
-   self.voronov = true -- HARDCODED
-   if (self.name == 'elc') then --CHECK THIS
+   if (self.name == 'elc') then -- access electron name from Voronov table
       self.voronovReactRate = self:allocMoment()
    end
 
@@ -528,13 +545,8 @@ function VlasovSpecies:advance(tCurr, species, emIn, inIdx, outIdx)
    end
    -- Perform the collision update.
    if self.evolveCollisions then
-      for collNm, c in pairs(self.collisions) do -- HARDCODED, added collision name for debugging
-	 -- HARDCODED if stmt to do nothing if collisions are ionization
-	 if (collNm == 'ionization') then
-	    -- do nothing
-	 else
-	    c.collisionSlvr:setDtAndCflRate(self.dtGlobal[0], self.cflRateByCell)
-	 end
+      for _, c in pairs(self.collisions) do
+	 c.collisionSlvr:setDtAndCflRate(self.dtGlobal[0], self.cflRateByCell)
 	 c:advance(tCurr, fIn, species, fRhsOut)
          -- The full 'species' list is needed for the cross-species
          -- collisions.
@@ -874,14 +886,13 @@ function VlasovSpecies:appendBoundaryConditions(dir, edge, bcType)
    end
 end
 
-function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species) --HARDCODED, added species to argument list
+function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species)
 
    local tmStart = Time.clock()
    -- Compute moments needed in coupling to fields and collisions.
    local fIn = self:rkStepperFields()[rkIdx]
    if self.needSelfPrimMom then
-      --self.fiveMomentsLBOCalc:advance(tCurr, {fIn}, { self.numDensity, self.momDensity, self.ptclEnergy, --HARDCODED 
-      self.fiveMomentsCalc:advance(tCurr, {fIn}, { self.numDensity, self.momDensity, self.ptclEnergy,
+      self.fiveMomentsLBOCalc:advance(tCurr, {fIn}, { self.numDensity, self.momDensity, self.ptclEnergy,
                                                       self.m1Correction, self.m2Correction,
                                                       self.m0Star, self.m1Star, self.m2Star })
       if self.needCorrectedSelfPrimMom then
@@ -911,9 +922,9 @@ function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species) --HARDCODED, a
    end
    self.tmCouplingMom = self.tmCouplingMom + Time.clock() - tmStart
 
-   if self.voronov and (self.name=="elc") then
+   if self.calcReactRate then
       -- compute voronov reaction self.vornovReactRate
-      species["elc"].collisions["ionization"].calcVoronovReactRate:advance(tCurr, {self.numDensity, self.vtSqSelf}, {self.voronovReactRate}) --check how to reference species and collisions
+      species[self.name].collisions[self.collNmVoronov].calcVoronovReactRate:advance(tCurr, {self.numDensity, self.vtSqSelf}, {self.voronovReactRate})
    end 
 
 end

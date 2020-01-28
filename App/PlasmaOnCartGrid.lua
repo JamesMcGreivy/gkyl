@@ -794,14 +794,9 @@ local function buildApplication(self, tbl)
          tmIntMom = tmIntMom + s:intMomCalcTime()
          tmBc = tmBc + s:totalBcTime()
          if s.collisions then
-	    print('PlasmaOnCartGrid for timing loop:', s.name)
-	    for collNm, c in pairs(s.collisions) do -- HARDCODED 
-	       if (collNm == 'ionization') and (s.name ~= 'elc') then
-		  -- do nothing
-	       else
-		  tmColl = tmColl + c:slvrTime()
-		  tmCollMom = tmCollMom + c:momTime()
-	       end
+	    for _, c in pairs(s.collisions) do 
+	       tmColl = tmColl + c:slvrTime()
+	       tmCollMom = tmCollMom + c:momTime()
 	    end
          end
       end

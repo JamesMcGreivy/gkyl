@@ -11,6 +11,7 @@ local Proto         = require "Lib.Proto"
 local VoronovDecl   = require "Updater.voronovCalcData.VoronovModDecl"
 local xsys          = require "xsys"
 local Lin           = require "Lib.Linalg"
+local Time          = require "Lib.Time"
 
 -- Voronov Collisions updater object.
 local VoronovIonization = Proto(UpdaterBase)
@@ -33,8 +34,6 @@ function VoronovIonization:init(tbl)
 			  "Updater.VoronovIonization: Must provide electron mass using 'elcMass'")
    self._elemCharge = assert(tbl.elemCharge,
 			     "Updater.VoronovIonization: Must provide elementary charge using 'elemCharge'")
-   self._T = assert(tbl.T, 
-		       "Updater.VoronovIonization: Must provide electron temp [eV] using 'elcTemp'")
    self._A = assert(tbl.A,
 		    "Updater.VoronovIonization: Must provide Voronov constant A using 'A'")
    self._E = assert(tbl.E,
@@ -59,11 +58,14 @@ function VoronovIonization:init(tbl)
    self._VoronovReactRateCalc = VoronovDecl.voronov(self._basisID, self._cDim, self._polyOrder)
 
    self.onGhosts = xsys.pickBool(false, tbl.onGhosts)
+
+   self._tmEvalMom = 0.0
 end
 
 ----------------------------------------------------------------------
 -- Updater Advance ---------------------------------------------------
 function VoronovIonization:_advance(tCurr, inFld, outFld)
+   local tmEvalMomStart = Time.clock()
    local grid = self._onGrid
 
    local elcM0    = inFld[1]
@@ -93,10 +95,14 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
       elcVtSq:fill(confIndexer(cIdx), elcVtSqItr)
       nuIz:fill(confIndexer(cIdx), nuIzItr)
 
-      -- Check this function! 
-      self._VoronovReactRateCalc(self._elemCharge, self._elcMass, elcM0Itr:data(), elcVtSqItr:data(), self._E, self._A, self._K, self._P, self._X, self._T, nuIzItr:data())
+      -- Check this function!
+      
+      self._VoronovReactRateCalc(self._elemCharge, self._elcMass, elcM0Itr:data(), elcVtSqItr:data(), self._E, self._A, self._K, self._P, self._X, nuIzItr:data())
      
    end
+   self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
 end
+
+function VoronovIonization:evalMomTime() return self._tmEvalMom end
 
 return VoronovIonization

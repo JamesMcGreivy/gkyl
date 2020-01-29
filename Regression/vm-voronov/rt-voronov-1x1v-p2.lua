@@ -32,8 +32,8 @@ end
 sim = Plasma.App {
    logToFile = false,
 
-   tEnd        = 100/omega_pe,     -- End time.
-   nFrame      = 10,               -- Number of output frames.
+   tEnd        = 10/omega_pe,     -- End time.
+   nFrame      = 1,               -- Number of output frames.
    lower       = {0.0},            -- Configuration space lower left.
    upper       = {128.0*lambda_D}, -- Configuration space upper right.
    cells       = {128},            -- Configuration space cells.

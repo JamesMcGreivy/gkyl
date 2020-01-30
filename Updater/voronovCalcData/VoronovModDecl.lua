@@ -15,7 +15,7 @@ local _M = {}
 
 -- Kernel function to compute Voronov reaction rate. 
 function _M.voronov(basisNm, CDIM, polyOrder)
-   local funcNm = string.format("VoronovReactRate%dx%s_P%d", CDIM, basisNmMap[basisNm], polyOrder)
+   local funcNm = string.format("VoronovReactRateCellAv%dx%s_P%d", CDIM, basisNmMap[basisNm], polyOrder)
    return ffi.C[funcNm]
 end
 

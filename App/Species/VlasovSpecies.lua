@@ -399,9 +399,10 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
 	       if (self.collPairs[sN][sO].kind == 'Voronov') then
 		  for collNm, _ in pairs(species[sN].collisions) do
 		     if self.name==species[sN].collisions[collNm].elcNm then
-			self.needSelfPrimMom = true
-			self.calcReactRate   = true
-			self.collNmVoronov   = collNm
+			self.needSelfPrimMom  = true
+			self.calcReactRate    = true
+			self.collNmVoronov    = collNm
+			self.voronovReactRate = self:allocMoment()
 		     end
 		  end
 	       end
@@ -488,10 +489,6 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
             end
          end
       end
-   end
-   
-   if (self.name == 'elc') then -- access electron name from Voronov table
-      self.voronovReactRate = self:allocMoment()
    end
 
 end
@@ -924,7 +921,7 @@ function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species)
 
    if self.calcReactRate then
       -- compute voronov reaction self.vornovReactRate
-      species[self.name].collisions[self.collNmVoronov].calcVoronovReactRate:advance(tCurr, {self.numDensity, self.vtSqSelf}, {self.voronovReactRate})
+      species[self.name].collisions[self.collNmVoronov].calcVoronovReactRate:advance(tCurr, {self.vtSqSelf}, {self.voronovReactRate})
    end 
 
 end

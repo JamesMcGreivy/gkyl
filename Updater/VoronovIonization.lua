@@ -25,11 +25,6 @@ function VoronovIonization:init(tbl)
 			  "Updater.VoronovIonization: Must provide grid object using 'onGrid'")
    self._confBasis = assert(tbl.confBasis,
 			    "Updater.VoronovIonization: Must provide configuration space basis object using 'confBasis'")
-   -- self._phaseGrid = assert(tbl.phaseGrid,
-   -- 			    "Updater.VoronovIonization: Must provide phase space grid object using 'phaseGrid'")
-   -- self._phaseBasis = assert(tbl.phaseBasis,
-   -- 			     "Updater.VoronovIonization: Must provide phase space basis object using 'phaseBasis'")
-
    self._elcMass = assert(tbl.elcMass,
 			  "Updater.VoronovIonization: Must provide electron mass using 'elcMass'")
    self._elemCharge = assert(tbl.elemCharge,
@@ -68,16 +63,14 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
    local tmEvalMomStart = Time.clock()
    local grid = self._onGrid
 
-   local elcM0    = inFld[1]
-   local elcVtSq  = inFld[2]
+   local elcVtSq  = inFld[1]
 
    local confIndexer = elcM0:genIndexer()
 
-   local elcM0Itr   = elcM0:get(1)
    local elcVtSqItr = elcVtSq:get(1)
 
-   local nuIz       = outFld[1]
-   local nuIzItr    = nuIz:get(1)
+   local coefIz       = outFld[1]
+   local coefIzItr    = coefIz:get(1)
 
    local confRange = elcM0:localRange()
    if self.onGhosts then confRange = elcM0:localExtRange() end
@@ -90,14 +83,11 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
    -- Configuration space loop
    for cIdx in confRangeDecomp:rowMajorIter(tId) do
       grid:setIndex(cIdx)
-      
-      elcM0:fill(confIndexer(cIdx), elcM0Itr)
-      elcVtSq:fill(confIndexer(cIdx), elcVtSqItr)
-      nuIz:fill(confIndexer(cIdx), nuIzItr)
 
-      -- Check this function!
-      
-      self._VoronovReactRateCalc(self._elemCharge, self._elcMass, elcM0Itr:data(), elcVtSqItr:data(), self._E, self._A, self._K, self._P, self._X, nuIzItr:data())
+      elcVtSq:fill(confIndexer(cIdx), elcVtSqItr)
+      coefIz:fill(confIndexer(cIdx), coefIzItr)
+
+      self._VoronovReactRateCalc(self._elemCharge, self._elcMass, elcVtSqItr:data(), self._E, self._A, self._K, self._P, self._X, coefIzItr:data())
      
    end
    self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart

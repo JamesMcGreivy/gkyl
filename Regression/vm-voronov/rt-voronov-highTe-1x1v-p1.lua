@@ -1,9 +1,7 @@
 -- Gkyl --------------------------------------------------------------
+-- Basic sheath simulation -------------------------------------------
 local Plasma    = require("App.PlasmaOnCartGrid").VlasovMaxwell
 local Constants = require "Lib.Constants"
-
--- This tests the Voronov Updater using a constant density and
--- temperature plasma with periodic BCs. Neutrals are not evolved.
 
 -- SI units.
 local elemCharge      = Constants.ELEMENTARY_CHARGE
@@ -14,7 +12,7 @@ local m_e, m_i      = 9.109383e-31, 1.6726218e-27
 local n_0           = 1.0e17
 local n_e, n_i, n_n = n_0, n_0, 100*n_0
 local vd_e, vd_i    = 0.0, 0.0
-local T_e, T_i      = 10*elemCharge, 1*elemCharge
+local T_e, T_i      = 20*elemCharge, 1*elemCharge
 
 local vth_e, vth_i = math.sqrt(T_e/m_e), math.sqrt(T_i/m_i)
 local uB           = math.sqrt(T_e/m_i)
@@ -32,8 +30,8 @@ end
 sim = Plasma.App {
    logToFile = false,
 
-   tEnd        = 10/omega_pe,     -- End time.
-   nFrame      = 1,               -- Number of output frames.
+   tEnd        = 10/omega_pe,  --1000/omega_pe,    -- End time.
+   nFrame      = 1,                -- Number of output frames.
    lower       = {0.0},            -- Configuration space lower left.
    upper       = {128.0*lambda_D}, -- Configuration space upper right.
    cells       = {128},            -- Configuration space cells.
@@ -63,14 +61,13 @@ sim = Plasma.App {
          return maxwellian(n_e, uB, vth_e, v)
       end,
       evolve = true, -- Evolve species?
-      bcx = { Plasma.Species.bcReflect,
-              Plasma.Species.bcAbsorb },
       diagnosticMoments = { "M0", "M1i", "M2", "vtSq"},
       diagnosticIntegratedMoments = {"intM0", "intM1i",
 				     "intM2Flow", "intM2Thermal" },
       ionization = Plasma.VoronovIonization {
-      	 collideWith  = {"neutOnElc"},
+      	 collideWith  = {"neutOnIon"},
       	 electrons    = "elc",
+	 neutrals     = "neutOnIon",
       	 elemCharge   = elemCharge, 
       	 elcMass      = m_e,
       	 plasma       = "H",         
@@ -97,9 +94,10 @@ sim = Plasma.App {
       ionization = Plasma.VoronovIonization {
       	 collideWith  = {"neutOnIon"},
       	 electrons    = "elc",
+	 neutrals     = "neutOnIon",
       	 elemCharge   = elemCharge,
       	 elcMass      = m_e,
-	 plasma       = "H",
+      	 plasma       = "H",
       }
    },
 
@@ -117,21 +115,6 @@ sim = Plasma.App {
       end,
       evolve = false, -- Evolve species?
    },
-
-   neutOnElc = Plasma.Species {
-      charge = 0.0, mass = m_i,
-      -- Velocity space grid.
-      lower = {-6.0*vth_e},
-      upper = {6.0*vth_e},
-      cells = {32},
-      decompCuts = {1},
-      -- Initial conditions.
-      init = function (t, xn)
-         local x, v = xn[1], xn[2]
-         return maxwellian(n_n, 0.0, vth_e, v)
-      end,
-      evolve = false, -- Evolve species?
-   },
    
    -- Field solver.
    field = Plasma.Field {
@@ -139,7 +122,7 @@ sim = Plasma.App {
       init = function (t, xn)
          return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
       end,
-      evolve = false, -- Evolve field?
+      evolve = true, -- Evolve field?
    },
 }
 -- Run application.

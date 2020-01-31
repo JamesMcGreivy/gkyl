@@ -51,8 +51,11 @@ function VoronovIonization:fullInit(speciesTbl)
    self.timeDepNu       = false
    self.collFreqs       = {1}
    
-   self.elcNm       = tbl.electrons
    self.collideNm   = tbl.collideWith[1]
+   
+   self.elcNm       = assert(tbl.electrons, "App.VoronovIonization: Must specify electron species name in 'electrons'.")
+   self.neutNm      = assert(tbl.neutrals, "App.VoronovIonization: Must specify electron species name in 'neutrals'.")
+   
    self.plasma      = tbl.plasma
    self.mass        = tbl.elcMass
    self.charge      = tbl.elemCharge
@@ -92,15 +95,11 @@ function VoronovIonization:setPhaseGrid(grid)
    self.phaseGrid = grid
 end
 
-function VoronovIonization:createSolver(funcField) --species)
-   -- will need to fetch information when neutrals have different grid than elc/ion
-   -- could grab grid from current neutral species
+function VoronovIonization:createSolver(funcField)
    if (self.speciesName == self.elcNm) then 
       self.calcVoronovReactRate = Updater.VoronovIonization {
 	 onGrid     = self.confGrid,
 	 confBasis  = self.confBasis,
-	 --phaseGrid  = self.phaseGrid, 
-	 --phaseBasis = self.phaseBasis,
 	 elcMass    = self.mass,
 	 elemCharge = self.charge,
       
@@ -113,6 +112,12 @@ function VoronovIonization:createSolver(funcField) --species)
       }
    end
 
+   self.confMult = Updater.CartFieldBinOp {
+         onGrid     = self.confGrid,
+         weakBasis  = self.confBasis,
+         operation  = "Multiply",
+   }
+   
    self.collisionSlvr = Updater.CartFieldBinOp {
          onGrid     = self.phaseGrid,
          weakBasis  = self.phaseBasis,
@@ -120,6 +125,12 @@ function VoronovIonization:createSolver(funcField) --species)
          operation  = "Multiply",
    }
 
+   self.coefM0 = DataStruct.Field {
+      onGrid        = self.confGrid,
+      numComponents = self.confBasis:numBasis(),
+      ghost         = {1, 1},
+   }
+   
    self.voronovSrc = DataStruct.Field {
       onGrid        = self.phaseGrid,
       numComponents = self.phaseBasis:numBasis(),
@@ -129,16 +140,32 @@ end
 
 function VoronovIonization:advance(tCurr, fIn, species, fRhsOut)
    
-   local nuIz = species[self.elcNm]:getVoronovReactRate()
+   local coefIz = species[self.elcNm]:getVoronovReactRate()
 
-   -- Check whether particle is neutral or plasma species
-   if (species[self.speciesName].charge == 0) then
+   -- Check whether particle is electron, neutral or ion species
+   -- electrons
+   if (self.speciesName == self.elcNm) then
+      local neutM0   = species[self.neutNm]:fluidMoments()[1]
+      local elcDistF = species[self.speciesName]:getDistF()
+
+      self.confMult:advance(tCurr, {coefIz, neutM0}, {self.coefM0})
+      self.collisionSlvr:advance(tCurr, {self.coefM0, elcDistF}, {self.voronovSrc})
+      fRhsOut:accumulate(1.0,self.voronovSrc)
+   -- neutrals   
+   elseif (species[self.speciesName].charge == 0) then
+      local elcM0  = species[self.elcNm]:fluidMoments()[1]
       local neutDistF = species[self.speciesName]:getDistF()
-      self.collisionSlvr:advance(tCurr, {nuIz, neutDistF}, {self.voronovSrc})
+
+      self.confMult:advance(tCurr, {coefIz, elcM0}, {self.coefM0})
+      self.collisionSlvr:advance(tCurr, {self.coefM0, neutDistF}, {self.voronovSrc})
       fRhsOut:accumulate(-1.0,self.voronovSrc)
+   -- ions   
    else
-      local neutDistF = species[self.collideNm]:getDistF()
-      self.collisionSlvr:advance(tCurr, {nuIz, neutDistF}, {self.voronovSrc})
+      local elcM0  = species[self.elcNm]:fluidMoments()[1]
+      local neutDistF = species[self.speciesName]:getDistF()
+
+      self.confMult:advance(tCurr, {coefIz, elcM0}, {self.coefM0})
+      self.collisionSlvr:advance(tCurr, {self.coefM0, neutDistF}, {self.voronovSrc})
       fRhsOut:accumulate(1.0,self.voronovSrc)
    end
 end
@@ -147,7 +174,9 @@ function VoronovIonization:write(tm, frame)
 end
 
 function VoronovIonization:slvrTime()
-   return self.collisionSlvr.totalTime
+   local time = self.confMult.totalTime
+   time = time + self.collisionSlvr.totalTime
+   return time
 end
 
 function VoronovIonization:momTime()
@@ -159,7 +188,9 @@ function VoronovIonization:momTime()
 end
 
 function VoronovIonization:projectMaxwellTime()
-   return self.collisionSlvr:projectMaxwellTime()
+   local time = self.confMult.projectMaxwellTime()
+   time = time + self.collisionSlvr.projectMaxwellTime
+   return time
 end
 
 return VoronovIonization

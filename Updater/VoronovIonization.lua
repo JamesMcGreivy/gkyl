@@ -65,15 +65,15 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
 
    local elcVtSq  = inFld[1]
 
-   local confIndexer = elcM0:genIndexer()
+   local confIndexer = elcVtSq:genIndexer()
 
    local elcVtSqItr = elcVtSq:get(1)
 
    local coefIz       = outFld[1]
    local coefIzItr    = coefIz:get(1)
 
-   local confRange = elcM0:localRange()
-   if self.onGhosts then confRange = elcM0:localExtRange() end
+   local confRange = elcVtSq:localRange()
+   if self.onGhosts then confRange = elcVtSq:localExtRange() end
 
    -- Construct ranges for nested loops.
    local confRangeDecomp = LinearDecomp.LinearDecompRange {

@@ -18,6 +18,9 @@ void VoronovReactRateCellAv1xSer_P1(const double elemCharge, const double m_, co
  
   coefIz[0] = (1.414213562373095*A*P*pow(U,K+1/2))/(1000000.0*X*exp(U)+1000000.0*U*exp(U))+(1.414213562373095*A*pow(U,K))/(1000000.0*X*exp(U)+1000000.0*U*exp(U)); 
  
+  if (U > 1.0) { 
+    coefIz[0] = 0.0;
+  }
 } 
  
 void VoronovReactRateCellAv1xSer_P2(const double elemCharge, const double m_, const double *vtSq, const double E, const double A, const double K, const double P, const double X, double *coefIz) 
@@ -38,6 +41,9 @@ void VoronovReactRateCellAv1xSer_P2(const double elemCharge, const double m_, co
  
   coefIz[0] = (1.414213562373095*A*P*pow(U,K+1/2))/(1000000.0*X*exp(U)+1000000.0*U*exp(U))+(1.414213562373095*A*pow(U,K))/(1000000.0*X*exp(U)+1000000.0*U*exp(U)); 
  
+  if (U > 1.0) { 
+    coefIz[0] = 0.0;
+  }
 } 
  
 void VoronovReactRateCellAv1xSer_P3(const double elemCharge, const double m_, const double *vtSq, const double E, const double A, const double K, const double P, const double X, double *coefIz) 
@@ -58,5 +64,8 @@ void VoronovReactRateCellAv1xSer_P3(const double elemCharge, const double m_, co
  
   coefIz[0] = (1.414213562373095*A*P*pow(U,K+1/2))/(1000000.0*X*exp(U)+1000000.0*U*exp(U))+(1.414213562373095*A*pow(U,K))/(1000000.0*X*exp(U)+1000000.0*U*exp(U)); 
  
+  if (U > 1.0) { 
+    coefIz[0] = 0.0;
+  }
 } 
  

@@ -1,4 +1,4 @@
-#include <VoronovModDecl.h> 
+#include <IonizationModDecl.h> 
 #include <math.h> 
 void VoronovReactRateCellAv1xMax_P1(const double elemCharge, const double m_, const double *vtSq, const double E, const double A, const double K, const double P, const double X, double *coefIz) 
 { 

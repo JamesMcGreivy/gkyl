@@ -23,6 +23,7 @@ local FemPoisson = require "Updater.FemPoisson"
 local FiveMomentSrc = require "Updater.FiveMomentSrc"
 local HyperDisCont = require "Updater.HyperDisCont"
 local HyperDisContCellBased = require "Updater.HyperDisContCellBased"
+local IonizationTempCalc = require "Updater.IonizationTempCalc"
 local LagrangeFix = require "Updater.LagrangeFix"
 local MappedPoisson = require "Updater.MappedPoisson"
 local MaxwellianOnBasis = require "Updater.MaxwellianOnBasis"
@@ -36,7 +37,7 @@ local SpitzerCollisionality = require "Updater.SpitzerCollisionality"
 local StairSteppedBc = require "Updater.StairSteppedBc"
 local TenMomentRelax = require "Updater.TenMomentRelax"
 local TenMomentSrc = require "Updater.TenMomentSrc"
-local VoronovIonization = require "Updater.VoronovIonization"
+local VoronovReactRateCoef = require "Updater.VoronovReactRateCoef"
 local WavePropagation = require "Updater.WavePropagation"
 
 return {
@@ -57,6 +58,7 @@ return {
    FiveMomentSrc = FiveMomentSrc,
    HyperDisCont = HyperDisCont,
    HyperDisContCellBased = HyperDisContCellBased,
+   IonizationTempCalc = IonizationTempCalc,
    LagrangeFix = LagrangeFix,
    MappedPoisson = MappedPoisson,
    MaxwellianOnBasis = MaxwellianOnBasis,
@@ -70,6 +72,6 @@ return {
    StairSteppedBc = StairSteppedBc,
    TenMomentRelax = TenMomentRelax,
    TenMomentSrc = TenMomentSrc,
-   VoronovIonization = VoronovIonization,
+   VoronovReactRateCoef = VoronovReactRateCoef,
    WavePropagation = WavePropagation,
 }

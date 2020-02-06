@@ -403,6 +403,7 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
 			self.calcReactRate    = true
 			self.collNmVoronov    = collNm
 			self.voronovReactRate = self:allocMoment()
+			self.ionizationVtSq   = self:allocMoment()
 		     end
 		  end
 	       end
@@ -922,6 +923,7 @@ function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species)
    if self.calcReactRate then
       -- compute voronov reaction self.vornovReactRate
       species[self.name].collisions[self.collNmVoronov].calcVoronovReactRate:advance(tCurr, {self.vtSqSelf}, {self.voronovReactRate})
+      species[self.name].collisions[self.collNmVoronov].calcIonizationTemp:advance(tCurr, {self.vtSqSelf}, {self.ionizationVtSq})
    end 
 
 end
@@ -1053,7 +1055,11 @@ end
 function VlasovSpecies:getVoronovReactRate()
    return self.voronovReactRate
 end
-   
+
+function VlasovSpecies:getIonizationVtSq()
+   return self.ionizationVtSq
+end
+
 -- please test this for higher than 1x1v... 
 function VlasovSpecies:Maxwellian(xn, n0, T0, vdnIn)
    local vdn = vdnIn or {0, 0, 0}

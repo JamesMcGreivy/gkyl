@@ -13,12 +13,18 @@ def build(bld):
     TenMomentSrcImpl.cpp
     TenMomentRelaxImpl.cpp
 
-    voronovCalcData/VoronovSer1x.cpp
-    voronovCalcData/VoronovSer2x.cpp
-    voronovCalcData/VoronovSer3x.cpp
-    voronovCalcData/VoronovMax1x.cpp
-    voronovCalcData/VoronovMax2x.cpp
-    voronovCalcData/VoronovMax3x.cpp
+    ionizationCalcData/VoronovSer1x.cpp
+    ionizationCalcData/VoronovSer2x.cpp
+    ionizationCalcData/VoronovSer3x.cpp
+    ionizationCalcData/VoronovMax1x.cpp
+    ionizationCalcData/VoronovMax2x.cpp
+    ionizationCalcData/VoronovMax3x.cpp
+    ionizationCalcData/IonizationVtSqSer1x.cpp
+    ionizationCalcData/IonizationVtSqSer2x.cpp
+    ionizationCalcData/IonizationVtSqSer3x.cpp
+    ionizationCalcData/IonizationVtSqMax1x.cpp
+    ionizationCalcData/IonizationVtSqMax2x.cpp
+    ionizationCalcData/IonizationVtSqMax3x.cpp
 
     mgPoissonCalcData/MGpoissonSer1x.cpp
     mgPoissonCalcData/MGpoissonSer2x.cpp
@@ -228,5 +234,5 @@ def build(bld):
         )
 
     bld.shlib(source = sources,
-              includes = '. .. ../Cuda mgPoissonCalcData voronovCalcData spitzerNuCalcData primMomentsCalcData binOpCalcData lagrangeFixData momentCalcData confToPhaseData', use='lib EIGEN MPI', target = 'updater', name = 'updater', vum = '1.0')
+              includes = '. .. ../Cuda mgPoissonCalcData ionizationCalcData spitzerNuCalcData primMomentsCalcData binOpCalcData lagrangeFixData momentCalcData confToPhaseData', use='lib EIGEN MPI', target = 'updater', name = 'updater', vum = '1.0')
     

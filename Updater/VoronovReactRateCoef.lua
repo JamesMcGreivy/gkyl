@@ -1,44 +1,44 @@
 -- Gkyl ------------------------------------------------------------------------
 --
--- Updater to calculate Voronov ionization for various species
+-- Updater to calculate Voronov ionization reaction rate coef for various species
 --
 --------------------------------------------------------------------------------
 
 -- Gkyl libraries.
-local UpdaterBase   = require "Updater.Base"
-local LinearDecomp  = require "Lib.LinearDecomp"
-local Proto         = require "Lib.Proto"
-local VoronovDecl   = require "Updater.voronovCalcData.VoronovModDecl"
-local xsys          = require "xsys"
-local Lin           = require "Lib.Linalg"
-local Time          = require "Lib.Time"
+local UpdaterBase    = require "Updater.Base"
+local LinearDecomp   = require "Lib.LinearDecomp"
+local Proto          = require "Lib.Proto"
+local IonizationDecl = require "Updater.ionizationCalcData.IonizationModDecl"
+local xsys           = require "xsys"
+local Lin            = require "Lib.Linalg"
+local Time           = require "Lib.Time"
 
 -- Voronov Collisions updater object.
-local VoronovIonization = Proto(UpdaterBase)
+local VoronovReactRateCoef = Proto(UpdaterBase)
 
 ----------------------------------------------------------------------
 -- Updater Initialization --------------------------------------------
-function VoronovIonization:init(tbl)
-   VoronovIonization.super.init(self, tbl) -- setup base object
+function VoronovReactRateCoef:init(tbl)
+   VoronovReactRateCoef.super.init(self, tbl) -- setup base object
 
-   self._onGrid = assert(tbl.onGrid,
-			  "Updater.VoronovIonization: Must provide grid object using 'onGrid'")
-   self._confBasis = assert(tbl.confBasis,
-			    "Updater.VoronovIonization: Must provide configuration space basis object using 'confBasis'")
-   self._elcMass = assert(tbl.elcMass,
-			  "Updater.VoronovIonization: Must provide electron mass using 'elcMass'")
+   self._onGrid     = assert(tbl.onGrid,
+			  "Updater.VoronovReactRateCoef: Must provide grid object using 'onGrid'")
+   self._confBasis  = assert(tbl.confBasis,
+			    "Updater.VoronovReactRateCoef: Must provide configuration space basis object using 'confBasis'")
+   self._elcMass    = assert(tbl.elcMass,
+			  "Updater.VoronovReactRateCoef: Must provide electron mass using 'elcMass'")
    self._elemCharge = assert(tbl.elemCharge,
-			     "Updater.VoronovIonization: Must provide elementary charge using 'elemCharge'")
+			     "Updater.VoronovReactRateCoef: Must provide elementary charge using 'elemCharge'")
    self._A = assert(tbl.A,
-		    "Updater.VoronovIonization: Must provide Voronov constant A using 'A'")
+		    "Updater.VoronovReactRateCoef: Must provide Voronov constant A using 'A'")
    self._E = assert(tbl.E,
-		    "Updater.VoronovIonization: Must provide Voronov constant E using 'E'")
+		    "Updater.VoronovReactRateCoef: Must provide Voronov constant E using 'E'")
    self._K = assert(tbl.K,
-		    "Updater.VoronovIonization: Must provide Voronov constant K using 'K'")
+		    "Updater.VoronovReactRateCoef: Must provide Voronov constant K using 'K'")
    self._P = assert(tbl.P,
-		    "Updater.VoronovIonization: Must provide Voronov constant P using 'P'")
+		    "Updater.VoronovReactRateCoef: Must provide Voronov constant P using 'P'")
    self._X = assert(tbl.X,
-		    "Updater.VoronovIonization: Must provide Voronov constant X using 'X'")
+		    "Updater.VoronovReactRateCoef: Must provide Voronov constant X using 'X'")
 
    -- Dimension of configuration space.
    self._cDim = self._confBasis:ndim()
@@ -50,7 +50,7 @@ function VoronovIonization:init(tbl)
    self._numBasisC = self._confBasis:numBasis()
 
    -- Define Voronov reaction rate
-   self._VoronovReactRateCalc = VoronovDecl.voronov(self._basisID, self._cDim, self._polyOrder)
+   self._VoronovReactRateCalc = IonizationDecl.voronovCoef(self._basisID, self._cDim, self._polyOrder)
 
    self.onGhosts = xsys.pickBool(false, tbl.onGhosts)
 
@@ -59,7 +59,7 @@ end
 
 ----------------------------------------------------------------------
 -- Updater Advance ---------------------------------------------------
-function VoronovIonization:_advance(tCurr, inFld, outFld)
+function VoronovReactRateCoef:_advance(tCurr, inFld, outFld)
    local tmEvalMomStart = Time.clock()
    local grid = self._onGrid
 
@@ -93,6 +93,6 @@ function VoronovIonization:_advance(tCurr, inFld, outFld)
    self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
 end
 
-function VoronovIonization:evalMomTime() return self._tmEvalMom end
+function VoronovReactRateCoef:evalMomTime() return self._tmEvalMom end
 
-return VoronovIonization
+return VoronovReactRateCoef

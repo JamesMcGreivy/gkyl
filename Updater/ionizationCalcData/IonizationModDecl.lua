@@ -6,7 +6,7 @@
 --------------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local _ = require "Updater.voronovCalcData._VoronovCdef"
+local _ = require "Updater.IonizationCalcData._IonizationCdef"
 
 -- Map of basis function name -> function encoding.
 local basisNmMap = { ["serendipity"] = "Ser", ["maximal-order"] = "Max" }
@@ -14,8 +14,13 @@ local basisNmMap = { ["serendipity"] = "Ser", ["maximal-order"] = "Max" }
 local _M = {}
 
 -- Kernel function to compute Voronov reaction rate. 
-function _M.voronov(basisNm, CDIM, polyOrder)
+function _M.voronovCoef(basisNm, CDIM, polyOrder)
    local funcNm = string.format("VoronovReactRateCellAv%dx%s_P%d", CDIM, basisNmMap[basisNm], polyOrder)
+   return ffi.C[funcNm]
+end
+
+function _M.ionizationTemp(basisNm, CDIM, polyOrder)
+   local funcNm = string.format("IonizationTemp%dx%s_P%d", CDIM, basisNmMap[basisNm], polyOrder)
    return ffi.C[funcNm]
 end
 

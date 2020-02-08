@@ -156,6 +156,18 @@ function VoronovIonization:createSolver(funcField)
       numComponents = self.phaseBasis:numBasis(),
       ghost         = {1, 1},
    }
+   -- For testing and debugging purposes
+   self.numDensityCalc = Updater.DistFuncMomentCalc {
+      onGrid     = self.phaseGrid,
+      phaseBasis = self.phaseBasis,
+      confBasis  = self.confBasis,
+      moment     = "M0",
+   }
+   self.sumDistFM0  = DataStruct.Field {
+      onGrid        = self.confGrid,
+      numComponents = self.confBasis:numBasis(),
+      ghost         = {1, 1},
+   }
 end
 
 function VoronovIonization:advance(tCurr, fIn, species, fRhsOut)
@@ -171,13 +183,17 @@ function VoronovIonization:advance(tCurr, fIn, species, fRhsOut)
       local elcDistF = species[self.speciesName]:getDistF()
       local vtSqIz   = species[self.elcNm]:getIonizationVtSq()
 
+      -- To check the ionization temperature
+      --vtSqIz:write(string.format("vtSqIz_%d.bp",tCurr*1e12), 0,0, false)
       self.maxwellIz:advance(tCurr, {elcM0, neutU, vtSqIz}, {self.fMaxwellIz})
       self.sumDistF:combine(2.0,self.fMaxwellIz,-1.0,elcDistF)
+      --self.numDensityCalc:advance(tCurr, {self.sumDistF}, {self.sumDistFM0})
 
       self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
       
       self.confMult:advance(tCurr, {coefIz, neutM0}, {self.coefM0})
       self.collisionSlvr:advance(tCurr, {self.coefM0, self.sumDistF}, {self.voronovSrc})
+       
       fRhsOut:accumulate(1.0,self.voronovSrc)
     -- neutrals   
    elseif (species[self.speciesName].charge == 0) then

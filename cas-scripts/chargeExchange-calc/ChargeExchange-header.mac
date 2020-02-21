@@ -2,10 +2,10 @@ cvars : [X, Y, Z]$
 
 polyOrderMax : 3$
 
-fh : openw("~/max-out/PaulsChargeExchangeModDecl.h")$
+fh : openw("~/max-out/ChargeExchangeModDecl.h")$
 
-printf(fh, "#ifndef PAULSCHARGEEXCHANGE_MOD_DELC_H ~%")$
-printf(fh, "#define PAULSCHARGEEXCHANGE_MOD_DELC_H ~%")$
+printf(fh, "#ifndef CHARGEEXCHANGE_MOD_DELC_H ~%")$
+printf(fh, "#define CHARGEEXCHANGE_MOD_DELC_H ~%")$
 printf(fh, "#include <cmath> ~%~%")$
 printf(fh, "#include <algorithm> ~%~%")$
 printf(fh, "extern \"C\" { ~%")$
@@ -19,6 +19,8 @@ for bInd : 1 thru length(bName) do (
      for ci : 1 thru 3 do (
      	 for vi : ci thru 3 do (
        	 printf(fh, "void vrelCXcellAv~a~ax~av_P~a(const double *w, const double *u, const double *vtSq, double *vrelCX); ~%", bName[bInd], ci, vi, pi),
+       	 printf(fh, "~%"),
+	printf(fh, "void lnVCXcellAv~a~ax~av_P~a(const double *uIon, const double uNeut*, const double *vtSqIon, const double *vtSqNeut, double *lnVCX); ~%", bName[bInd], ci, vi, pi),
        	 printf(fh, "~%")
 	 )
      ),	 

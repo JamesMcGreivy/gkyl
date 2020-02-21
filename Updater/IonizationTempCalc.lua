@@ -41,7 +41,7 @@ function IonizationTemp:init(tbl)
    -- Number of basis functions.
    self._numBasisC = self._confBasis:numBasis()
 
-   -- Define ionization temperature calculatin
+   -- Define ionization temperature calculation
    self._IonizationTempCalc = IonizationDecl.ionizationTemp(self._basisID, self._cDim, self._polyOrder)
 
    self.onGhosts = xsys.pickBool(false, tbl.onGhosts)

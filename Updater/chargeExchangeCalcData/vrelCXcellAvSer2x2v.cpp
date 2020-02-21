@@ -1,4 +1,4 @@
-#include <PaulsChargeExchange.h> 
+#include <ChargeExchange.h> 
 #include <math.h> 
 void vrelCXcellAvSer2x2v_P1(const double *w, const double *u, const double *vtSq, double *vrelCX) 
 { 
@@ -9,7 +9,7 @@ void vrelCXcellAvSer2x2v_P1(const double *w, const double *u, const double *vtSq
  
   double vtSqAv = 0.5*vtSq[0]; 
   double xSqAv = (0.25*u[4]^2)/vtSqAv-(1.0*w[3]*u[4])/vtSqAv+w[3]^2/vtSqAv+w[2]^2/vtSqAv-(1.0*u[0]*w[2])/vtSqAv+(0.25*u[0]^2)/vtSqAv; 
-  vrelCX[0] = 4.0*sqrt(vtSqAv)*sqrt(xSqAv+4.0/pi); 
+  vrelCX[0] = 2.256758334191025*sqrt(vtSqAv)*sqrt(3.141592653589793*xSqAv+4.0); 
  
 } 
 void vrelCXcellAvSer2x2v_P2(const double *w, const double *u, const double *vtSq, double *vrelCX) 
@@ -21,7 +21,7 @@ void vrelCXcellAvSer2x2v_P2(const double *w, const double *u, const double *vtSq
  
   double vtSqAv = 0.5*vtSq[0]; 
   double xSqAv = (0.25*u[8]^2)/vtSqAv-(1.0*w[3]*u[8])/vtSqAv+w[3]^2/vtSqAv+w[2]^2/vtSqAv-(1.0*u[0]*w[2])/vtSqAv+(0.25*u[0]^2)/vtSqAv; 
-  vrelCX[0] = 4.0*sqrt(vtSqAv)*sqrt(xSqAv+4.0/pi); 
+  vrelCX[0] = 2.256758334191025*sqrt(vtSqAv)*sqrt(3.141592653589793*xSqAv+4.0); 
  
 } 
 void vrelCXcellAvSer2x2v_P3(const double *w, const double *u, const double *vtSq, double *vrelCX) 
@@ -33,6 +33,6 @@ void vrelCXcellAvSer2x2v_P3(const double *w, const double *u, const double *vtSq
  
   double vtSqAv = 0.5*vtSq[0]; 
   double xSqAv = (0.25*u[12]^2)/vtSqAv-(1.0*w[3]*u[12])/vtSqAv+w[3]^2/vtSqAv+w[2]^2/vtSqAv-(1.0*u[0]*w[2])/vtSqAv+(0.25*u[0]^2)/vtSqAv; 
-  vrelCX[0] = 4.0*sqrt(vtSqAv)*sqrt(xSqAv+4.0/pi); 
+  vrelCX[0] = 2.256758334191025*sqrt(vtSqAv)*sqrt(3.141592653589793*xSqAv+4.0); 
  
 } 

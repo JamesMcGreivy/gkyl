@@ -30,7 +30,7 @@ writeCExprsCs(lhs, rhs) := block([expr],
   )
 )$
 
-/* Relative velocity for Pauls' charge exchange */
+/* Relative velocity for Pauls charge exchange */
 calcVrelCXcellAv(fh, funcNm, cdim, vdim, basisFun, pMax) := block([],
   kill(varsC, varsP, basisC, basisP),
   modNm : sconcat("basis-precalc/basis", basisFun, cdim, "x", vdim, "v"),
@@ -57,23 +57,19 @@ calcVrelCXcellAv(fh, funcNm, cdim, vdim, basisFun, pMax) := block([],
 	
     vtSqAv_c : innerProd(varsC,1.0,1.0, doExpand1(vtSq,bC))/innerProd(varsC,1.0,1.0,1.0),
 
-    print("Line60", vtSqAv_c),
     declareWriteCExprsC(vtSqAv, vtSqAv_c),
     
     /* Define x variable xSq = (v - u)^2/vtSq */
     xSq_c    : fullratsimp(innerProd(varsP,1/vtSqAv,1.0,sum((w[d+cdim-1] - uiAv[d])^2,d,1,vdim))/innerProd(varsP,1.0,1.0,1.0)),
 
-    print("Line66", xSq_c),
     declareWriteCExprsC(xSqAv, xSq_c),
     
     /* Define relative velocity */
-    vrelCX_c  : calcInnerProdList(varsP,sqrt(vtSqAv),bP,sqrt(4/pi + xSqAv)),
+    vrelCX_c  : calcInnerProdList(varsP,sqrt(vtSqAv),bP,sqrt(4/%pi + xSqAv)),
 
-    print("Line72", vrelCX_c),
     writeCExprsCs(vrelCX, vrelCX_c),
     printf(fh, " ~%"),
-    printf(fh, "} ~%"),
-    print("End of loop for p=", p)
+    printf(fh, "} ~%")
 ))$
 
 bName        : ["Ser","Max"]$
@@ -86,7 +82,7 @@ for bInd : 1 thru length(bName) do (
     	  fname : sconcat("~/max-out/vrelCXcellAv", bName[bInd], c, "x", v, "v", ".cpp"),
     	  fh : openw(fname),
 
-    	  printf(fh, "#include <PaulsChargeExchange.h> ~%"),
+    	  printf(fh, "#include <ChargeExchange.h> ~%"),
     	  printf(fh, "#include <math.h> ~%"),
 
 	  print("attempting to print",c,"x",v,"v functions..."),

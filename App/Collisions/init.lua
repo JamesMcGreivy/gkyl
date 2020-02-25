@@ -5,6 +5,7 @@
 -- + 6 @ |||| # P ||| +
 --------------------------------------------------------------------------------
 
+local ChargeExchange    = require "App.Collisions.ChargeExchange"
 local CollisionsBase    = require "App.Collisions.CollisionsBase"
 local FluidDiffusion    = require "App.Collisions.FluidDiffusion"
 local GkBGKCollisions   = require "App.Collisions.GkBGKCollisions"
@@ -14,6 +15,7 @@ local VmLBOCollisions   = require "App.Collisions.VmLBOCollisions"
 local VoronovIonization = require "App.Collisions.VoronovIonization"
 
 return {
+  ChargeExchange    = ChargeExchange,
   CollisionsBase    = CollisionsBase,
   FluidDiffusion    = FluidDiffusion,
   GkBGKCollisions   = GkBGKCollisions,

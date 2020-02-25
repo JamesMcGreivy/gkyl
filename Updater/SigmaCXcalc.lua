@@ -1,6 +1,6 @@
 -- Gkyl ------------------------------------------------------------------------
 --
--- Updater to calculate ln(V_CX) for the Pauls CX model
+-- Updater to calculate SigmaCX for the Pauls CX model
 --
 --------------------------------------------------------------------------------
 
@@ -14,20 +14,28 @@ local Lin                = require "Lib.Linalg"
 local Time               = require "Lib.Time"
 
 -- Charge exchange collisions updater object.
-local lnVCX = Proto(UpdaterBase)
+local SigmaCX = Proto(UpdaterBase)
 
 ----------------------------------------------------------------------
 -- Updater Initialization --------------------------------------------
-function lnVCX:init(tbl)
-   lnVCX.super.init(self, tbl) -- setup base object
+function SigmaCX:init(tbl)
+   SigmaCX.super.init(self, tbl) -- setup base object
 
    self._onGrid     = assert(tbl.onGrid,
-			     "Updater.lnVCX: Must provide grid object using 'onGrid'")
+			     "Updater.SigmaCX: Must provide grid object using 'onGrid'")
    self._confBasis  = assert(tbl.confBasis,
-			     "Updater.lnVCX: Must provide configuration space basis object using 'confBasis'")
+			     "Updater.SigmaCX: Must provide configuration space basis object using 'confBasis'")
+   self._phaseBasis = assert(tbl.phaseBasis,
+			     "Updater.SigmaCX: Must provide configuration space basis object using 'phaseBasis'")
+   self._a = assert(tbl.a,
+		    "Updater.SigmaCX: Must provide fitting constant a using 'a'")
+   self._b = assert(tbl.b,
+		    "Updater.SigmaCX: Must provide fitting constant b using 'b'")
    
    -- Dimension of spaces.
    self._cDim = self._confBasis:ndim()
+   self._pDim = self._phaseBasis:ndim()
+   self._vDim = self._pDim - self._cDim
 
    -- Basis name and polynomial order.
    self._basisID   = self._phaseBasis:id()
@@ -37,7 +45,7 @@ function lnVCX:init(tbl)
    self._numBasis = self._confBasis:numBasis()
 
    -- Define relative velocity calculation
-   self._lnVcxCalc = ChargeExchangeDecl.lnVCX(self._basisID, self._cDim, self._vDim, self._polyOrder)
+   self._calcSigmaCX = ChargeExchangeDecl.sigmaCX(self._basisID, self._cDim, self._vDim, self._polyOrder)
 
    self.onGhosts = xsys.pickBool(false, tbl.onGhosts)
 
@@ -46,17 +54,17 @@ end
 
 ----------------------------------------------------------------------
 -- Updater Advance ---------------------------------------------------
-function lnVCX:_advance(tCurr, inFld, outFld)
+function SigmaCX:_advance(tCurr, inFld, outFld)
    local tmEvalMomStart = Time.clock()
    local grid = self._onGrid
    local numPhaseBasis = self._phaseBasis:numBasis()
    local cDim = self._cDim
 
-   local uIon       = assert(inFld[1], "lnVCX.advance: Must specify ion fluid velocity as input[1]")
-   local uNeut      = assert(inFld[2], "lnVCX.advance: Must specify neutral fluid velocity as input[2]")
-   local vtSqIon    = assert(inFld[3], "lnVCX.advance: Must specify ion squared thermal velocity as input[3]")
-   local vtSqNeut   = assert(inFld[4], "lnVCX.advance: Must specify neutral squared thermal velocity as input[3]")
-   local lnVcx      = assert(outFld[1], "lnVCX.advance: Must specify an output field")
+   local uIon       = assert(inFld[1], "SigmaCX.advance: Must specify ion fluid velocity as input[1]")
+   local uNeut      = assert(inFld[2], "SigmaCX.advance: Must specify neutral fluid velocity as input[2]")
+   local vtSqIon    = assert(inFld[3], "SigmaCX.advance: Must specify ion squared thermal velocity as input[3]")
+   local vtSqNeut   = assert(inFld[4], "SigmaCX.advance: Must specify neutral squared thermal velocity as input[4]")
+   local sigmaCX    = assert(outFld[1], "SigmaCX.advance: Must specify an output field")
    
    local confIndexer  = uIon:genIndexer()
 
@@ -65,7 +73,7 @@ function lnVCX:_advance(tCurr, inFld, outFld)
    local vtSqIonItr   = vtSqIon:get(1)
    local vtSqNeutItr  = vtSqNeut:get(1)
  
-   local lnVcxItr     = lnVcx:get(1)
+   local sigmaCXItr     = sigmaCX:get(1)
 
    local confRange = uIon:localRange()
 
@@ -74,22 +82,21 @@ function lnVCX:_advance(tCurr, inFld, outFld)
    local tId = grid:subGridSharedId()    -- Local thread ID.
    
    -- Phase space loop
-   for pIdx in phaseRangeDecomp:rowMajorIter(tId) do
-      grid:setIndex(pIdx)
-      grid:cellCenter(self.xc)
+   for cIdx in confRangeDecomp:rowMajorIter(tId) do
+      grid:setIndex(cIdx)
       
       uIon:fill(confIndexer(cIdx), uIonItr)
       uNeut:fill(confIndexer(cIdx), uNeutItr)      
       vtSqIon:fill(confIndexer(cIdx), vtSqIonItr)
       vtSqNeut:fill(confIndexer(cIdx), vtSqNeutItr)
-      lnVcx:fill(confIndexer(cIdx), lnVcxItr)
+      sigmaCX:fill(confIndexer(cIdx), sigmaCXItr)
 
-      self._lnVcxCalc(uIonItr:data(), uNeutItr:data(), vtSqIonItr:data(), vtSqNeutItr:data(), lnVcxItr:data())
+      self._calcSigmaCX(self._a, self._b, uIonItr:data(), uNeutItr:data(), vtSqIonItr:data(), vtSqNeutItr:data(), sigmaCXItr:data())
      
    end
    self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
 end
 
-function lnVCX:evalMomTime() return self._tmEvalMom end
+function SigmaCX:evalMomTime() return self._tmEvalMom end
 
-return lnVCX
+return SigmaCX

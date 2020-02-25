@@ -67,7 +67,7 @@ function relativeVelocityCX:_advance(tCurr, inFld, outFld)
 
    local uItr      = u:get(1)
    local vtSqItr   = vtSq:get(1)
-   local vrelCXItr = vtSqIz:get(1)
+   local vrelCXItr = vrelCX:get(1)
 
    local phaseRange = vrelCX:localRange()
 

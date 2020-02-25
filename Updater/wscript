@@ -13,6 +13,31 @@ def build(bld):
     TenMomentSrcImpl.cpp
     TenMomentRelaxImpl.cpp
 
+    chargeExchangeCalcData/SigmaCXcellAvSer1x1v.cpp
+    chargeExchangeCalcData/SigmaCXcellAvSer1x2v.cpp
+    chargeExchangeCalcData/SigmaCXcellAvSer1x3v.cpp
+    chargeExchangeCalcData/SigmaCXcellAvSer2x2v.cpp
+    chargeExchangeCalcData/SigmaCXcellAvSer2x3v.cpp
+    chargeExchangeCalcData/SigmaCXcellAvSer3x3v.cpp
+    chargeExchangeCalcData/SigmaCXcellAvMax1x1v.cpp
+    chargeExchangeCalcData/SigmaCXcellAvMax1x2v.cpp
+    chargeExchangeCalcData/SigmaCXcellAvMax1x3v.cpp
+    chargeExchangeCalcData/SigmaCXcellAvMax2x2v.cpp
+    chargeExchangeCalcData/SigmaCXcellAvMax2x3v.cpp
+    chargeExchangeCalcData/SigmaCXcellAvMax3x3v.cpp
+    chargeExchangeCalcData/VrelCXcellAvSer1x1v.cpp
+    chargeExchangeCalcData/VrelCXcellAvSer1x2v.cpp
+    chargeExchangeCalcData/VrelCXcellAvSer1x3v.cpp
+    chargeExchangeCalcData/VrelCXcellAvSer2x2v.cpp
+    chargeExchangeCalcData/VrelCXcellAvSer2x3v.cpp
+    chargeExchangeCalcData/VrelCXcellAvSer3x3v.cpp
+    chargeExchangeCalcData/VrelCXcellAvMax1x1v.cpp
+    chargeExchangeCalcData/VrelCXcellAvMax1x2v.cpp
+    chargeExchangeCalcData/VrelCXcellAvMax1x3v.cpp
+    chargeExchangeCalcData/VrelCXcellAvMax2x2v.cpp
+    chargeExchangeCalcData/VrelCXcellAvMax2x3v.cpp
+    chargeExchangeCalcData/VrelCXcellAvMax3x3v.cpp
+
     ionizationCalcData/VoronovSer1x.cpp
     ionizationCalcData/VoronovSer2x.cpp
     ionizationCalcData/VoronovSer3x.cpp
@@ -234,5 +259,5 @@ def build(bld):
         )
 
     bld.shlib(source = sources,
-              includes = '. .. ../Cuda mgPoissonCalcData ionizationCalcData spitzerNuCalcData primMomentsCalcData binOpCalcData lagrangeFixData momentCalcData confToPhaseData', use='lib EIGEN MPI', target = 'updater', name = 'updater', vum = '1.0')
+              includes = '. .. ../Cuda mgPoissonCalcData chargeExchangeCalcData ionizationCalcData spitzerNuCalcData primMomentsCalcData binOpCalcData lagrangeFixData momentCalcData confToPhaseData', use='lib EIGEN MPI', target = 'updater', name = 'updater', vum = '1.0')
     

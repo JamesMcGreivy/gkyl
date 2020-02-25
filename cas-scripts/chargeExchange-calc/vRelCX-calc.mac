@@ -7,7 +7,7 @@ load(stringproc)$
 fpprec : 24$
 
 /* Serendipity basis. */
-maxPolyOrder_Ser : 2$
+maxPolyOrder_Ser : 3$
 
 /* Maximal order basis. */
 maxPolyOrder_Max : 3$
@@ -16,6 +16,10 @@ declareWriteCExprsC(lhs, rhs) := block([expr],
   expr : float(expand(rhs)),
   if expr # 0.0 then (
     ep : string(expr),
+    for i : 0 thru 60 do (
+    	ep : ssubst(string(pow(u[i],2)),string(u[i]^2),ep),
+    	ep : ssubst(string(pow(w[i],2)),string(w[i]^2),ep)	
+    ),
     printf(fh, "  double ~a = ~a; ~%", lhs, ep)
   )
 )$
@@ -76,13 +80,13 @@ bName        : ["Ser","Max"]$
 maxPolyOrder : [maxPolyOrder_Ser, maxPolyOrder_Max]$
 
 for bInd : 1 thru length(bName) do (
-  for c : 3 thru 3 do (
-      for v : 3 thru 3 do (
+  for c : 1 thru 2 do (
+      for v : c thru 3 do (
       	  disp(printf(false,sconcat("Creating PaulsCX relative velocity ", bName[bInd]," ~ax~av"),c,v)),
-    	  fname : sconcat("~/max-out/vrelCXcellAv", bName[bInd], c, "x", v, "v", ".cpp"),
+    	  fname : sconcat("~/max-out/VrelCXcellAv", bName[bInd], c, "x", v, "v", ".cpp"),
     	  fh : openw(fname),
 
-    	  printf(fh, "#include <ChargeExchange.h> ~%"),
+    	  printf(fh, "#include <ChargeExchangeModDecl.h> ~%"),
     	  printf(fh, "#include <math.h> ~%"),
 
 	  print("attempting to print",c,"x",v,"v functions..."),

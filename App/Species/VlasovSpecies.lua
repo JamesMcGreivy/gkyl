@@ -176,6 +176,19 @@ function VlasovSpecies:createSolver(hasE, hasB)
       }
    end
 
+   -- Updaters for charge exchange source term
+   self.confPhaseMult = Updater.CartFieldBinOp {
+         onGrid     = self.grid,
+         weakBasis  = self.basis,
+         fieldBasis = self.confBasis,
+         operation  = "Multiply",
+   }
+   self.phaseMult = Updater.CartFieldBinOp {
+      onGrid    = self.grid,
+      weakBasis = self.basis,
+      operation = "Multiply",
+   }
+
    self.tmCouplingMom = 0.0    -- For timer.
 end
 
@@ -392,6 +405,7 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
       end
    end
 
+   -- If Voronov collision object exists, locate electrons
    for sN, _ in pairs(species) do
       if species[sN].collisions and next(species[sN].collisions) then 
          for sO, _ in pairs(species) do
@@ -405,6 +419,71 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
 			self.voronovReactRate = self:allocMoment()
 			self.ionizationVtSq   = self:allocMoment()
 		     end
+		  end
+	       end
+	    end
+	 end
+      end
+   end
+
+   -- If Charge Exchange collision object exists, locate ions
+   for sN, _ in pairs(species) do
+      if species[sN].collisions and next(species[sN].collisions) then 
+         for sO, _ in pairs(species) do
+	    if self.collPairs[sN][sO].on then
+	       if (self.collPairs[sN][sO].kind == 'CX') then
+		  for collNm, _ in pairs(species[sN].collisions) do
+		     if self.name==species[sN].collisions[collNm].ionNm then
+			self.collNmCX         = collNm
+			self.neutNmCX         = species[sN].collisions[collNm].neutNm
+			self.calcCXSrc        = true			
+			self.needSelfPrimMom  = true
+			self.sigmaCX          = self:allocMoment()
+			-- Define fields needed to calculate source term
+			self.vrelCX   = DataStruct.Field {
+			   onGrid        = self.grid,
+			   numComponents = self.basis:numBasis(),
+			   ghost         = {1, 1},
+			}
+			self.vrelM0CX = DataStruct.Field {
+			   onGrid        = self.grid,
+			   numComponents = self.basis:numBasis(),
+			   ghost         = {1, 1},
+			}
+			self.vrelM0DistFCX = DataStruct.Field {
+			   onGrid        = self.grid,
+			   numComponents = self.basis:numBasis(),
+			   ghost         = {1, 1},
+			}
+			self.diffDistF   =  DataStruct.Field {
+			   onGrid        = self.grid,
+			   numComponents = self.basis:numBasis(),
+			   ghost         = {1, 1},
+			}
+			self.srcCX    = DataStruct.Field {
+			   onGrid        = self.grid,
+			   numComponents = self.basis:numBasis(),
+			   ghost         = {1, 1},
+			}
+		     elseif self.name==species[sN].collisions[collNm].neutNm then
+			self.needSelfPrimMom  = true
+			-- Define fields needed to calculate source term
+			self.vrelCX   = DataStruct.Field {
+			   onGrid        = self.grid,
+			   numComponents = self.basis:numBasis(),
+			   ghost         = {1, 1},
+			}
+			self.vrelM0CX = DataStruct.Field {
+			   onGrid        = self.grid,
+			   numComponents = self.basis:numBasis(),
+			   ghost         = {1, 1},
+			}
+			self.vrelM0DistFCX = DataStruct.Field {
+			   onGrid        = self.grid,
+			   numComponents = self.basis:numBasis(),
+			   ghost         = {1, 1},
+			}
+ 		     end
 		  end
 	       end
 	    end
@@ -924,7 +1003,30 @@ function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species)
       -- compute voronov reaction self.vornovReactRate
       species[self.name].collisions[self.collNmVoronov].calcVoronovReactRate:advance(tCurr, {self.vtSqSelf}, {self.voronovReactRate})
       species[self.name].collisions[self.collNmVoronov].calcIonizationTemp:advance(tCurr, {self.vtSqSelf}, {self.ionizationVtSq})
-   end 
+   end
+
+   if self.calcCXSrc then
+      -- calculate CX cross section
+      species[self.name].collisions[self.collNmCX].collisionSlvr:advance(tCurr, {self.uSelf, species[self.neutNmCX].uSelf, self.vtSqSelf, species[self.neutNmCX].vtSqSelf}, {self.sigmaCX})
+      
+      -- calculate relative velocities
+      species[self.name].collisions[self.collNmCX].calcVrelCX:advance(tCurr, {self.uSelf, self.vtSqSelf}, {self.vrelCX})
+      species[self.neutNmCX].collisions[self.collNmCX].calcVrelCX:advance(tCurr, {species[self.neutNmCX].uSelf, species[self.neutNmCX].vtSqSelf}, {species[self.neutNmCX].vrelCX})
+
+      -- compute source term for charge exchange
+      local ionM0     = species[self.name]:fluidMoments()[1]
+      local ionDistF  = species[self.name]:getDistF()
+      local neutM0    = species[self.neutNmCX]:fluidMoments()[1]
+      local neutDistF = species[self.neutNmCX]:getDistF()
+
+      self.confPhaseMult:advance(tCurr, {ionM0, self.vrelCX}, {self.vrelM0CX})
+      self.confPhaseMult:advance(tCurr, {neutM0, species[self.neutNmCX].vrelCX}, {species[self.neutNmCX].vrelM0CX})
+      self.phaseMult:advance(tCurr, {self.vrelM0CX, neutDistF}, {self.vrelM0DistFCX})
+      self.phaseMult:advance(tCurr, {species[self.neutNmCX].vrelM0CX, ionDistF}, {species[self.neutNmCX].vrelM0DistFCX})
+      self.diffDistF:combine(1.0, self.vrelM0DistFCX, -1.0, species[self.neutNmCX].vrelM0DistFCX) -- the error is here!
+      self.confPhaseMult:advance(tCurr, {self.sigmaCX, self.diffDistF}, {self.srcCX})
+
+   end
 
 end
 
@@ -1058,6 +1160,10 @@ end
 
 function VlasovSpecies:getIonizationVtSq()
    return self.ionizationVtSq
+end
+
+function VlasovSpecies:getSrcCX()
+   return self.srcCX
 end
 
 -- please test this for higher than 1x1v... 

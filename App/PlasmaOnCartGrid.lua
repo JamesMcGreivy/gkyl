@@ -904,6 +904,7 @@ end
 return {
    AdiabaticSpecies   = Species.AdiabaticSpecies,
    App                = App,
+   ChargeExchange     = Collisions.ChargeExchange,
    FluidDiffusion     = Collisions.FluidDiffusion,
    FuncMaxwellField   = Field.FuncMaxwellField,
    FuncVlasovSpecies  = Species.FuncVlasovSpecies,
@@ -948,6 +949,7 @@ return {
       LBOCollisions        = Collisions.VmLBOCollisions,
       BgkCollisions        = Collisions.VmBGKCollisions,
       LboCollisions        = Collisions.VmLBOCollisions,
+      ChargeExchange       = Collisions.ChargeExchange,
       VoronovIonization    = Collisions.VoronovIonization,
    },
    Moments = {

@@ -29,335 +29,188 @@ void MGpoissonRestrict1xSer_P1(double **fldF, double *fldC)
 
 }
 
-void MGpoissonGaussSeidel1xSer_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phi) 
+void MGpoissonDampedGaussSeidel1xSer_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phiPrev, double **phi) 
 { 
-  // omega:  relaxation parameter.
-  // dx:     cell lengths of cells pointed to by the stencil.
-  // bcVals: values to impose as BCs.
-  // rho:    right-side source in the current cell.
-  // phi:    iterate cells pointed to by the stencil.
+  // omega:   relaxation parameter.
+  // dx:      cell lengths of cells pointed to by the stencil.
+  // bcVals:  values to impose as BCs.
+  // rho:     right-side source in the current cell.
+  // phiPrev: (Jacobi-only) iterate cells pointed to by the stencil (only use neighbor cells).
+  // phi:     iterate cells pointed to by the stencil (Gauss-Seidel), or cell we are currently updating (Jacobi).
 
   double *dxC  = dx[0]; 
-  double *dxUx = dx[1]; 
-  double *dxLx = dx[2]; 
 
   double volFac = 0.5*dxC[0]; 
 
-  double rdxCp2[1]; 
-  double rdxLx[1]; 
-  double rdxUx[1]; 
-  double rdxLxSq[1]; 
-  double rdxUxSq[1]; 
-  rdxCp2[0]  = volFac*4.0/(dxC[0]*dxC[0]); 
-  rdxLx[0]   = 1.0/dxLx[0]; 
-  rdxUx[0]   = 1.0/dxUx[0]; 
-  rdxLxSq[0] = rdxLx[0]*rdxLx[0]; 
-  rdxUxSq[0] = rdxUx[0]*rdxUx[0]; 
+  double rdx2SqVol[1]; 
+  rdx2SqVol[0]   = volFac*4.0/(dxC[0]*dxC[0]); 
 
   double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
+  double *phiLx = phi[1]; 
+  double *phiUx = phi[2]; 
 
-  phiC[0] = -(1.0*(((34.64101615137754*rdxUx[0]-34.64101615137754*rdxLx[0])*rho[1]+((-92.0*rdxUx[0])-92.0*rdxLx[0])*rho[0])*volFac+(69.28203230275508*rdxUxSq[0]+129.9038105676658*rdxLx[0]*rdxUx[0])*phiUx[1]+((-129.9038105676658*rdxLx[0]*rdxUx[0])-69.28203230275508*rdxLxSq[0])*phiLx[1]-66.0*phiUx[0]*rdxUxSq[0]+((-141.0*phiUx[0])-141.0*phiLx[0])*rdxLx[0]*rdxUx[0]-66.0*phiLx[0]*rdxLxSq[0]))/(6.0*rdxUxSq[0]+402.0*rdxLx[0]*rdxUx[0]+6.0*rdxLxSq[0]); 
-  phiC[1] = (((36.0*rdxUx[0]+36.0*rdxLx[0])*rho[1]+(90.06664199358161*rdxLx[0]-90.06664199358161*rdxUx[0])*rho[0])*volFac+(66.0*rdxUxSq[0]-129.0*rdxLx[0]*rdxUx[0])*phiUx[1]+(66.0*rdxLxSq[0]-129.0*rdxLx[0]*rdxUx[0])*phiLx[1]-62.35382907247956*phiUx[0]*rdxUxSq[0]+(140.296115413079*phiUx[0]-140.296115413079*phiLx[0])*rdxLx[0]*rdxUx[0]+62.35382907247956*phiLx[0]*rdxLxSq[0])/(6.0*rdxUxSq[0]+402.0*rdxLx[0]*rdxUx[0]+6.0*rdxLxSq[0]); 
+  phiC[0] = (0.05555555555555555*(16.0*rho[0]*omega*volFac+((-8.660254037844386*rdx2SqVol[0]*phiUx[1])+8.660254037844386*rdx2SqVol[0]*phiLx[1]+(9.0*phiUx[0]+9.0*phiLx[0]-18.0*phiC[0])*rdx2SqVol[0])*omega+18.0*phiC[0]*rdx2SqVol[0]))/rdx2SqVol[0]; 
+  phiC[1] = (0.02173913043478261*(16.0*rho[1]*omega*volFac+((-7.0*rdx2SqVol[0]*phiUx[1])-7.0*rdx2SqVol[0]*phiLx[1]-46.0*rdx2SqVol[0]*phiC[1]+(8.660254037844386*phiUx[0]-8.660254037844386*phiLx[0])*rdx2SqVol[0])*omega+46.0*rdx2SqVol[0]*phiC[1]))/rdx2SqVol[0]; 
 
 }
 
-void MGpoissonGaussSeidel1xSer_LxDirichlet_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phi) 
+void MGpoissonDampedGaussSeidel1xSer_LxRobin_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phiPrev, double **phi) 
 { 
-  // omega:  relaxation parameter.
-  // dx:     cell lengths of cells pointed to by the stencil.
-  // bcVals: values to impose as BCs.
-  // rho:    right-side source in the current cell.
-  // phi:    iterate cells pointed to by the stencil.
+  // omega:   relaxation parameter.
+  // dx:      cell lengths of cells pointed to by the stencil.
+  // bcVals:  values to impose as BCs.
+  // rho:     right-side source in the current cell.
+  // phiPrev: (Jacobi-only) iterate cells pointed to by the stencil (only use neighbor cells).
+  // phi:     iterate cells pointed to by the stencil (Gauss-Seidel), or cell we are currently updating (Jacobi).
 
   double *dxC  = dx[0]; 
+
   double volFac = 0.5*dxC[0]; 
 
-  double rdxCp2[1]; 
-  double rdxCp2Sq[1]; 
-  double rdxCp2R3[1]; 
-  double rdxCp2R4[1]; 
-  double rdxCp2R6[1]; 
-  double rdxCp2R8[1]; 
-  rdxCp2[0]  = volFac/(dxC[0]*dxC[0]); 
-  rdxCp2Sq[0]  = rdxCp2[0]*rdxCp2[0]; 
-  rdxCp2R3[0]  = rdxCp2[0]*rdxCp2Sq[0]; 
-  rdxCp2R4[0]  = rdxCp2Sq[0]*rdxCp2Sq[0]; 
-  rdxCp2R6[0]  = rdxCp2Sq[0]*rdxCp2R4[0]; 
-  rdxCp2R8[0]  = rdxCp2R4[0]*rdxCp2R4[0]; 
+  double rdx2SqVol[1]; 
+  rdx2SqVol[0]   = volFac*4.0/(dxC[0]*dxC[0]); 
+
+  double bcValsSq[6]; 
+  bcValsSq[0] = bcVals[0]*bcVals[0];
+  bcValsSq[1] = bcVals[1]*bcVals[1];
+  bcValsSq[2] = bcVals[2]*bcVals[2];
+  bcValsSq[3] = bcVals[3]*bcVals[3];
+  bcValsSq[4] = bcVals[4]*bcVals[4];
+  bcValsSq[5] = bcVals[5]*bcVals[5];
 
   double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
+  double *phiLx = phi[1]; 
+  double *phiUx = phi[2]; 
 
-  phiC[0] = (0.001374643498070538*((3.0*rho[1]+86.60254037844386*rho[0])*volFac-360.0*rdxCp2[0]*phiUx[1]+(311.7691453623978*phiUx[0]+587.877538267963*bcVals[0])*rdxCp2[0]))/rdxCp2[0]; 
-  phiC[1] = (0.002061965247105807*((5.196152422706631*rho[1]+10.0*rho[0])*volFac-138.5640646055102*rdxCp2[0]*phiUx[1]+(120.0*phiUx[0]-169.7056274847715*bcVals[0])*rdxCp2[0]))/rdxCp2[0]; 
+  phiC[0] = -(1.0*(((220.454076850486*bcVals[1]+303.7367281051142*bcVals[0])*rho[1]-1196.424673767639*rho[0]*bcVals[1]+741.0479066835021*bcVals[0]*rho[0])*omega*volFac+(1056.0*rdx2SqVol[0]*bcVals[2]+(514.3928459844674*rdx2SqVol[0]*bcVals[1]-440.9081537009721*bcVals[0]*rdx2SqVol[0])*phiUx[1]+(521.8448045156721*phiC[0]-521.8448045156721*phiUx[0])*rdx2SqVol[0]*bcVals[1]+(500.6316010800758*bcVals[0]*phiUx[0]-1247.33636201307*bcVals[0]*phiC[0])*rdx2SqVol[0])*omega-521.8448045156721*phiC[0]*rdx2SqVol[0]*bcVals[1]+1247.33636201307*bcVals[0]*phiC[0]*rdx2SqVol[0]))/(521.8448045156721*rdx2SqVol[0]*bcVals[1]-1247.33636201307*bcVals[0]*rdx2SqVol[0]); 
+  phiC[1] = (((229.1025971044415*bcVals[1]-220.6173157302029*bcVals[0])*rho[1]-279.2418306772823*rho[0]*bcVals[1]-166.5653025092562*bcVals[0]*rho[0])*omega*volFac+(415.6921938165305*rdx2SqVol[0]*bcVals[2]+(12.72792206135786*rdx2SqVol[0]*bcVals[1]+280.0142853498729*bcVals[0]*rdx2SqVol[0])*phiUx[1]+(1247.33636201307*bcVals[0]*rdx2SqVol[0]-521.8448045156721*rdx2SqVol[0]*bcVals[1])*phiC[1]-293.9387691339815*bcVals[0]*phiUx[0]*rdx2SqVol[0])*omega+(521.8448045156721*rdx2SqVol[0]*bcVals[1]-1247.33636201307*bcVals[0]*rdx2SqVol[0])*phiC[1])/(521.8448045156721*rdx2SqVol[0]*bcVals[1]-1247.33636201307*bcVals[0]*rdx2SqVol[0]); 
 
 }
 
-void MGpoissonGaussSeidel1xSer_LxNeumann_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phi) 
+void MGpoissonDampedGaussSeidel1xSer_UxRobin_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phiPrev, double **phi) 
 { 
-  // omega:  relaxation parameter.
-  // dx:     cell lengths of cells pointed to by the stencil.
-  // bcVals: values to impose as BCs.
-  // rho:    right-side source in the current cell.
-  // phi:    iterate cells pointed to by the stencil.
+  // omega:   relaxation parameter.
+  // dx:      cell lengths of cells pointed to by the stencil.
+  // bcVals:  values to impose as BCs.
+  // rho:     right-side source in the current cell.
+  // phiPrev: (Jacobi-only) iterate cells pointed to by the stencil (only use neighbor cells).
+  // phi:     iterate cells pointed to by the stencil (Gauss-Seidel), or cell we are currently updating (Jacobi).
 
   double *dxC  = dx[0]; 
+
   double volFac = 0.5*dxC[0]; 
 
-  double rdxCp2[1]; 
-  double rdxCp2Sq[1]; 
-  double rdxCp2R3[1]; 
-  double rdxCp2R4[1]; 
-  double rdxCp2R6[1]; 
-  double rdxCp2R8[1]; 
-  rdxCp2[0]  = volFac/(dxC[0]*dxC[0]); 
-  rdxCp2Sq[0]  = rdxCp2[0]*rdxCp2[0]; 
-  rdxCp2R3[0]  = rdxCp2[0]*rdxCp2Sq[0]; 
-  rdxCp2R4[0]  = rdxCp2Sq[0]*rdxCp2Sq[0]; 
-  rdxCp2R6[0]  = rdxCp2Sq[0]*rdxCp2R4[0]; 
-  rdxCp2R8[0]  = rdxCp2R4[0]*rdxCp2R4[0]; 
+  double rdx2SqVol[1]; 
+  rdx2SqVol[0]   = volFac*4.0/(dxC[0]*dxC[0]); 
+
+  double bcValsSq[6]; 
+  bcValsSq[0] = bcVals[0]*bcVals[0];
+  bcValsSq[1] = bcVals[1]*bcVals[1];
+  bcValsSq[2] = bcVals[2]*bcVals[2];
+  bcValsSq[3] = bcVals[3]*bcVals[3];
+  bcValsSq[4] = bcVals[4]*bcVals[4];
+  bcValsSq[5] = bcVals[5]*bcVals[5];
 
   double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
+  double *phiLx = phi[1]; 
+  double *phiUx = phi[2]; 
 
-  phiC[0] = -(0.009622504486493766*((9.0*rho[1]-51.96152422706631*rho[0])*volFac+120.0*rdxCp2[0]*phiUx[1]+(97.97958971132716*bcVals[0]-103.9230484541326*phiUx[0])*rdxCp2[0]))/rdxCp2[0]; 
-  phiC[1] = (0.02886751345948129*((1.732050807568877*rho[1]-5.0*rho[0])*volFac+14.14213562373095*bcVals[0]*rdxCp2[0]))/rdxCp2[0]; 
+  phiC[0] = (((220.454076850486*rho[1]+1196.424673767639*rho[0])*bcVals[4]+(741.0479066835021*rho[0]-303.7367281051142*rho[1])*bcVals[3])*omega*volFac+(1056.0*rdx2SqVol[0]*bcVals[5]+(514.3928459844674*rdx2SqVol[0]*phiLx[1]+(521.8448045156721*phiLx[0]-521.8448045156721*phiC[0])*rdx2SqVol[0])*bcVals[4]+(440.9081537009721*rdx2SqVol[0]*phiLx[1]+(500.6316010800758*phiLx[0]-1247.33636201307*phiC[0])*rdx2SqVol[0])*bcVals[3])*omega+521.8448045156721*phiC[0]*rdx2SqVol[0]*bcVals[4]+1247.33636201307*phiC[0]*rdx2SqVol[0]*bcVals[3])/(521.8448045156721*rdx2SqVol[0]*bcVals[4]+1247.33636201307*rdx2SqVol[0]*bcVals[3]); 
+  phiC[1] = (((229.1025971044415*rho[1]+279.2418306772823*rho[0])*bcVals[4]+(220.6173157302029*rho[1]-166.5653025092562*rho[0])*bcVals[3])*omega*volFac+(415.6921938165305*rdx2SqVol[0]*bcVals[5]+(12.72792206135786*rdx2SqVol[0]*phiLx[1]-521.8448045156721*rdx2SqVol[0]*phiC[1])*bcVals[4]+((-280.0142853498729*rdx2SqVol[0]*phiLx[1])-1247.33636201307*rdx2SqVol[0]*phiC[1]-293.9387691339815*phiLx[0]*rdx2SqVol[0])*bcVals[3])*omega+521.8448045156721*rdx2SqVol[0]*phiC[1]*bcVals[4]+1247.33636201307*rdx2SqVol[0]*phiC[1]*bcVals[3])/(521.8448045156721*rdx2SqVol[0]*bcVals[4]+1247.33636201307*rdx2SqVol[0]*bcVals[3]); 
 
 }
 
-void MGpoissonGaussSeidel1xSer_UxDirichlet_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phi) 
+void MGpoissonDampedJacobi1xSer_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phiPrev, double **phi) 
 { 
-  // omega:  relaxation parameter.
-  // dx:     cell lengths of cells pointed to by the stencil.
-  // bcVals: values to impose as BCs.
-  // rho:    right-side source in the current cell.
-  // phi:    iterate cells pointed to by the stencil.
+  // omega:   relaxation parameter.
+  // dx:      cell lengths of cells pointed to by the stencil.
+  // bcVals:  values to impose as BCs.
+  // rho:     right-side source in the current cell.
+  // phiPrev: (Jacobi-only) iterate cells pointed to by the stencil (only use neighbor cells).
+  // phi:     iterate cells pointed to by the stencil (Gauss-Seidel), or cell we are currently updating (Jacobi).
 
   double *dxC  = dx[0]; 
+
   double volFac = 0.5*dxC[0]; 
 
-  double rdxCp2[1]; 
-  double rdxCp2Sq[1]; 
-  double rdxCp2R3[1]; 
-  double rdxCp2R4[1]; 
-  double rdxCp2R6[1]; 
-  double rdxCp2R8[1]; 
-  rdxCp2[0]  = volFac/(dxC[0]*dxC[0]); 
-  rdxCp2Sq[0]  = rdxCp2[0]*rdxCp2[0]; 
-  rdxCp2R3[0]  = rdxCp2[0]*rdxCp2Sq[0]; 
-  rdxCp2R4[0]  = rdxCp2Sq[0]*rdxCp2Sq[0]; 
-  rdxCp2R6[0]  = rdxCp2Sq[0]*rdxCp2R4[0]; 
-  rdxCp2R8[0]  = rdxCp2R4[0]*rdxCp2R4[0]; 
+  double rdx2SqVol[1]; 
+  rdx2SqVol[0]   = volFac*4.0/(dxC[0]*dxC[0]); 
 
   double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
+  double *phiPrevC = phiPrev[0]; 
+  double *phiLx = phiPrev[1]; 
+  double *phiUx = phiPrev[2]; 
 
-  phiC[0] = -(0.001374643498070538*((3.0*rho[1]-86.60254037844386*rho[0])*volFac-360.0*rdxCp2[0]*phiLx[1]-587.877538267963*rdxCp2[0]*bcVals[1]-311.7691453623978*phiLx[0]*rdxCp2[0]))/rdxCp2[0]; 
-  phiC[1] = (0.002061965247105807*((5.196152422706631*rho[1]-10.0*rho[0])*volFac-138.5640646055102*rdxCp2[0]*phiLx[1]+169.7056274847715*rdxCp2[0]*bcVals[1]-120.0*phiLx[0]*rdxCp2[0]))/rdxCp2[0]; 
+  phiC[0] = (0.05555555555555555*(16.0*rho[0]*omega*volFac+((-8.660254037844386*rdx2SqVol[0]*phiUx[1])+8.660254037844386*rdx2SqVol[0]*phiLx[1]+(9.0*phiUx[0]-18.0*phiPrevC[0]+9.0*phiLx[0])*rdx2SqVol[0])*omega+18.0*phiPrevC[0]*rdx2SqVol[0]))/rdx2SqVol[0]; 
+  phiC[1] = (0.02173913043478261*(16.0*rho[1]*omega*volFac+((-7.0*rdx2SqVol[0]*phiUx[1])-46.0*rdx2SqVol[0]*phiPrevC[1]-7.0*rdx2SqVol[0]*phiLx[1]+(8.660254037844386*phiUx[0]-8.660254037844386*phiLx[0])*rdx2SqVol[0])*omega+46.0*rdx2SqVol[0]*phiPrevC[1]))/rdx2SqVol[0]; 
 
 }
 
-void MGpoissonGaussSeidel1xSer_UxNeumann_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phi) 
+void MGpoissonDampedJacobi1xSer_LxRobin_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phiPrev, double **phi) 
 { 
-  // omega:  relaxation parameter.
-  // dx:     cell lengths of cells pointed to by the stencil.
-  // bcVals: values to impose as BCs.
-  // rho:    right-side source in the current cell.
-  // phi:    iterate cells pointed to by the stencil.
+  // omega:   relaxation parameter.
+  // dx:      cell lengths of cells pointed to by the stencil.
+  // bcVals:  values to impose as BCs.
+  // rho:     right-side source in the current cell.
+  // phiPrev: (Jacobi-only) iterate cells pointed to by the stencil (only use neighbor cells).
+  // phi:     iterate cells pointed to by the stencil (Gauss-Seidel), or cell we are currently updating (Jacobi).
 
   double *dxC  = dx[0]; 
+
   double volFac = 0.5*dxC[0]; 
 
-  double rdxCp2[1]; 
-  double rdxCp2Sq[1]; 
-  double rdxCp2R3[1]; 
-  double rdxCp2R4[1]; 
-  double rdxCp2R6[1]; 
-  double rdxCp2R8[1]; 
-  rdxCp2[0]  = volFac/(dxC[0]*dxC[0]); 
-  rdxCp2Sq[0]  = rdxCp2[0]*rdxCp2[0]; 
-  rdxCp2R3[0]  = rdxCp2[0]*rdxCp2Sq[0]; 
-  rdxCp2R4[0]  = rdxCp2Sq[0]*rdxCp2Sq[0]; 
-  rdxCp2R6[0]  = rdxCp2Sq[0]*rdxCp2R4[0]; 
-  rdxCp2R8[0]  = rdxCp2R4[0]*rdxCp2R4[0]; 
+  double rdx2SqVol[1]; 
+  rdx2SqVol[0]   = volFac*4.0/(dxC[0]*dxC[0]); 
+
+  double bcValsSq[6]; 
+  bcValsSq[0] = bcVals[0]*bcVals[0];
+  bcValsSq[1] = bcVals[1]*bcVals[1];
+  bcValsSq[2] = bcVals[2]*bcVals[2];
+  bcValsSq[3] = bcVals[3]*bcVals[3];
+  bcValsSq[4] = bcVals[4]*bcVals[4];
+  bcValsSq[5] = bcVals[5]*bcVals[5];
 
   double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
+  double *phiPrevC = phiPrev[0]; 
+  double *phiLx = phiPrev[1]; 
+  double *phiUx = phiPrev[2]; 
 
-  phiC[0] = (0.009622504486493766*((9.0*rho[1]+51.96152422706631*rho[0])*volFac+120.0*rdxCp2[0]*phiLx[1]+97.97958971132716*rdxCp2[0]*bcVals[1]+103.9230484541326*phiLx[0]*rdxCp2[0]))/rdxCp2[0]; 
-  phiC[1] = (0.02886751345948129*((1.732050807568877*rho[1]+5.0*rho[0])*volFac+14.14213562373095*rdxCp2[0]*bcVals[1]))/rdxCp2[0]; 
+  phiC[0] = -(1.0*(((220.454076850486*bcVals[1]+303.7367281051142*bcVals[0])*rho[1]-1196.424673767639*rho[0]*bcVals[1]+741.0479066835021*bcVals[0]*rho[0])*omega*volFac+(1056.0*rdx2SqVol[0]*bcVals[2]+(514.3928459844674*rdx2SqVol[0]*bcVals[1]-440.9081537009721*bcVals[0]*rdx2SqVol[0])*phiUx[1]+(521.8448045156721*phiPrevC[0]-521.8448045156721*phiUx[0])*rdx2SqVol[0]*bcVals[1]+(500.6316010800758*bcVals[0]*phiUx[0]-1247.33636201307*bcVals[0]*phiPrevC[0])*rdx2SqVol[0])*omega-521.8448045156721*phiPrevC[0]*rdx2SqVol[0]*bcVals[1]+1247.33636201307*bcVals[0]*phiPrevC[0]*rdx2SqVol[0]))/(521.8448045156721*rdx2SqVol[0]*bcVals[1]-1247.33636201307*bcVals[0]*rdx2SqVol[0]); 
+  phiC[1] = (((229.1025971044415*bcVals[1]-220.6173157302029*bcVals[0])*rho[1]-279.2418306772823*rho[0]*bcVals[1]-166.5653025092562*bcVals[0]*rho[0])*omega*volFac+(415.6921938165305*rdx2SqVol[0]*bcVals[2]+(12.72792206135786*rdx2SqVol[0]*bcVals[1]+280.0142853498729*bcVals[0]*rdx2SqVol[0])*phiUx[1]+(1247.33636201307*bcVals[0]*rdx2SqVol[0]-521.8448045156721*rdx2SqVol[0]*bcVals[1])*phiPrevC[1]-293.9387691339815*bcVals[0]*phiUx[0]*rdx2SqVol[0])*omega+(521.8448045156721*rdx2SqVol[0]*bcVals[1]-1247.33636201307*bcVals[0]*rdx2SqVol[0])*phiPrevC[1])/(521.8448045156721*rdx2SqVol[0]*bcVals[1]-1247.33636201307*bcVals[0]*rdx2SqVol[0]); 
 
 }
 
-void MGpoissonDampedGaussSeidel1xSer_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phi) 
+void MGpoissonDampedJacobi1xSer_UxRobin_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phiPrev, double **phi) 
 { 
-  // omega:  relaxation parameter.
-  // dx:     cell lengths of cells pointed to by the stencil.
-  // bcVals: values to impose as BCs.
-  // rho:    right-side source in the current cell.
-  // phi:    iterate cells pointed to by the stencil.
+  // omega:   relaxation parameter.
+  // dx:      cell lengths of cells pointed to by the stencil.
+  // bcVals:  values to impose as BCs.
+  // rho:     right-side source in the current cell.
+  // phiPrev: (Jacobi-only) iterate cells pointed to by the stencil (only use neighbor cells).
+  // phi:     iterate cells pointed to by the stencil (Gauss-Seidel), or cell we are currently updating (Jacobi).
 
   double *dxC  = dx[0]; 
-  double *dxUx = dx[1]; 
-  double *dxLx = dx[2]; 
 
   double volFac = 0.5*dxC[0]; 
 
-  double rdxCp2[1]; 
-  double rdxLx[1]; 
-  double rdxUx[1]; 
-  double rdxLxSq[1]; 
-  double rdxUxSq[1]; 
-  rdxCp2[0]  = volFac*4.0/(dxC[0]*dxC[0]); 
-  rdxLx[0]   = 1.0/dxLx[0]; 
-  rdxUx[0]   = 1.0/dxUx[0]; 
-  rdxLxSq[0] = rdxLx[0]*rdxLx[0]; 
-  rdxUxSq[0] = rdxUx[0]*rdxUx[0]; 
+  double rdx2SqVol[1]; 
+  rdx2SqVol[0]   = volFac*4.0/(dxC[0]*dxC[0]); 
+
+  double bcValsSq[6]; 
+  bcValsSq[0] = bcVals[0]*bcVals[0];
+  bcValsSq[1] = bcVals[1]*bcVals[1];
+  bcValsSq[2] = bcVals[2]*bcVals[2];
+  bcValsSq[3] = bcVals[3]*bcVals[3];
+  bcValsSq[4] = bcVals[4]*bcVals[4];
+  bcValsSq[5] = bcVals[5]*bcVals[5];
 
   double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
+  double *phiPrevC = phiPrev[0]; 
+  double *phiLx = phiPrev[1]; 
+  double *phiUx = phiPrev[2]; 
 
-  phiC[0] = -(1.0*(((34.64101615137754*rdxUx[0]-34.64101615137754*rdxLx[0])*rho[1]+((-92.0*rdxUx[0])-92.0*rdxLx[0])*rho[0])*omega*volFac+((69.28203230275508*rdxUxSq[0]+129.9038105676658*rdxLx[0]*rdxUx[0])*phiUx[1]+((-129.9038105676658*rdxLx[0]*rdxUx[0])-69.28203230275508*rdxLxSq[0])*phiLx[1]+(6.0*phiC[0]-66.0*phiUx[0])*rdxUxSq[0]+((-141.0*phiUx[0])-141.0*phiLx[0]+402.0*phiC[0])*rdxLx[0]*rdxUx[0]+(6.0*phiC[0]-66.0*phiLx[0])*rdxLxSq[0])*omega-6.0*phiC[0]*rdxUxSq[0]-402.0*phiC[0]*rdxLx[0]*rdxUx[0]-6.0*phiC[0]*rdxLxSq[0]))/(6.0*rdxUxSq[0]+402.0*rdxLx[0]*rdxUx[0]+6.0*rdxLxSq[0]); 
-  phiC[1] = (((36.0*rdxUx[0]+36.0*rdxLx[0])*rho[1]+(90.06664199358161*rdxLx[0]-90.06664199358161*rdxUx[0])*rho[0])*omega*volFac+((66.0*rdxUxSq[0]-129.0*rdxLx[0]*rdxUx[0])*phiUx[1]+(66.0*rdxLxSq[0]-129.0*rdxLx[0]*rdxUx[0])*phiLx[1]+((-6.0*rdxUxSq[0])-402.0*rdxLx[0]*rdxUx[0]-6.0*rdxLxSq[0])*phiC[1]-62.35382907247956*phiUx[0]*rdxUxSq[0]+(140.296115413079*phiUx[0]-140.296115413079*phiLx[0])*rdxLx[0]*rdxUx[0]+62.35382907247956*phiLx[0]*rdxLxSq[0])*omega+(6.0*rdxUxSq[0]+402.0*rdxLx[0]*rdxUx[0]+6.0*rdxLxSq[0])*phiC[1])/(6.0*rdxUxSq[0]+402.0*rdxLx[0]*rdxUx[0]+6.0*rdxLxSq[0]); 
-
-}
-
-void MGpoissonDampedGaussSeidel1xSer_LxDirichlet_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phi) 
-{ 
-  // omega:  relaxation parameter.
-  // dx:     cell lengths of cells pointed to by the stencil.
-  // bcVals: values to impose as BCs.
-  // rho:    right-side source in the current cell.
-  // phi:    iterate cells pointed to by the stencil.
-
-  double *dxC  = dx[0]; 
-  double volFac = 0.5*dxC[0]; 
-
-  double rdxCp2[1]; 
-  double rdxCp2Sq[1]; 
-  double rdxCp2R3[1]; 
-  double rdxCp2R4[1]; 
-  double rdxCp2R6[1]; 
-  double rdxCp2R8[1]; 
-  rdxCp2[0]  = volFac/(dxC[0]*dxC[0]); 
-  rdxCp2Sq[0]  = rdxCp2[0]*rdxCp2[0]; 
-  rdxCp2R3[0]  = rdxCp2[0]*rdxCp2Sq[0]; 
-  rdxCp2R4[0]  = rdxCp2Sq[0]*rdxCp2Sq[0]; 
-  rdxCp2R6[0]  = rdxCp2Sq[0]*rdxCp2R4[0]; 
-  rdxCp2R8[0]  = rdxCp2R4[0]*rdxCp2R4[0]; 
-
-  double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
-
-  phiC[0] = (0.001374643498070538*((3.0*rho[1]+86.60254037844386*rho[0])*omega*volFac+((311.7691453623978*phiUx[0]-727.4613391789284*phiC[0]+587.877538267963*bcVals[0])*rdxCp2[0]-360.0*rdxCp2[0]*phiUx[1])*omega+727.4613391789284*phiC[0]*rdxCp2[0]))/rdxCp2[0]; 
-  phiC[1] = (0.002061965247105807*((5.196152422706631*rho[1]+10.0*rho[0])*omega*volFac+((-138.5640646055102*rdxCp2[0]*phiUx[1])-484.9742261192856*rdxCp2[0]*phiC[1]+(120.0*phiUx[0]-169.7056274847715*bcVals[0])*rdxCp2[0])*omega+484.9742261192856*rdxCp2[0]*phiC[1]))/rdxCp2[0]; 
-
-}
-
-void MGpoissonDampedGaussSeidel1xSer_LxNeumann_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phi) 
-{ 
-  // omega:  relaxation parameter.
-  // dx:     cell lengths of cells pointed to by the stencil.
-  // bcVals: values to impose as BCs.
-  // rho:    right-side source in the current cell.
-  // phi:    iterate cells pointed to by the stencil.
-
-  double *dxC  = dx[0]; 
-  double volFac = 0.5*dxC[0]; 
-
-  double rdxCp2[1]; 
-  double rdxCp2Sq[1]; 
-  double rdxCp2R3[1]; 
-  double rdxCp2R4[1]; 
-  double rdxCp2R6[1]; 
-  double rdxCp2R8[1]; 
-  rdxCp2[0]  = volFac/(dxC[0]*dxC[0]); 
-  rdxCp2Sq[0]  = rdxCp2[0]*rdxCp2[0]; 
-  rdxCp2R3[0]  = rdxCp2[0]*rdxCp2Sq[0]; 
-  rdxCp2R4[0]  = rdxCp2Sq[0]*rdxCp2Sq[0]; 
-  rdxCp2R6[0]  = rdxCp2Sq[0]*rdxCp2R4[0]; 
-  rdxCp2R8[0]  = rdxCp2R4[0]*rdxCp2R4[0]; 
-
-  double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
-
-  phiC[0] = -(0.009622504486493766*((9.0*rho[1]-51.96152422706631*rho[0])*omega*volFac+(120.0*rdxCp2[0]*phiUx[1]+((-103.9230484541326*phiUx[0])+103.9230484541326*phiC[0]+97.97958971132716*bcVals[0])*rdxCp2[0])*omega-103.9230484541326*phiC[0]*rdxCp2[0]))/rdxCp2[0]; 
-  phiC[1] = (0.02886751345948129*((1.732050807568877*rho[1]-5.0*rho[0])*omega*volFac+(14.14213562373095*bcVals[0]*rdxCp2[0]-34.64101615137754*rdxCp2[0]*phiC[1])*omega+34.64101615137754*rdxCp2[0]*phiC[1]))/rdxCp2[0]; 
-
-}
-
-void MGpoissonDampedGaussSeidel1xSer_UxDirichlet_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phi) 
-{ 
-  // omega:  relaxation parameter.
-  // dx:     cell lengths of cells pointed to by the stencil.
-  // bcVals: values to impose as BCs.
-  // rho:    right-side source in the current cell.
-  // phi:    iterate cells pointed to by the stencil.
-
-  double *dxC  = dx[0]; 
-  double volFac = 0.5*dxC[0]; 
-
-  double rdxCp2[1]; 
-  double rdxCp2Sq[1]; 
-  double rdxCp2R3[1]; 
-  double rdxCp2R4[1]; 
-  double rdxCp2R6[1]; 
-  double rdxCp2R8[1]; 
-  rdxCp2[0]  = volFac/(dxC[0]*dxC[0]); 
-  rdxCp2Sq[0]  = rdxCp2[0]*rdxCp2[0]; 
-  rdxCp2R3[0]  = rdxCp2[0]*rdxCp2Sq[0]; 
-  rdxCp2R4[0]  = rdxCp2Sq[0]*rdxCp2Sq[0]; 
-  rdxCp2R6[0]  = rdxCp2Sq[0]*rdxCp2R4[0]; 
-  rdxCp2R8[0]  = rdxCp2R4[0]*rdxCp2R4[0]; 
-
-  double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
-
-  phiC[0] = -(0.001374643498070538*((3.0*rho[1]-86.60254037844386*rho[0])*omega*volFac+((-360.0*rdxCp2[0]*phiLx[1])-587.877538267963*rdxCp2[0]*bcVals[1]+(727.4613391789284*phiC[0]-311.7691453623978*phiLx[0])*rdxCp2[0])*omega-727.4613391789284*phiC[0]*rdxCp2[0]))/rdxCp2[0]; 
-  phiC[1] = (0.002061965247105807*((5.196152422706631*rho[1]-10.0*rho[0])*omega*volFac+((-138.5640646055102*rdxCp2[0]*phiLx[1])-484.9742261192856*rdxCp2[0]*phiC[1]+169.7056274847715*rdxCp2[0]*bcVals[1]-120.0*phiLx[0]*rdxCp2[0])*omega+484.9742261192856*rdxCp2[0]*phiC[1]))/rdxCp2[0]; 
-
-}
-
-void MGpoissonDampedGaussSeidel1xSer_UxNeumann_P1(const double omega, double **dx, const double *bcVals, const double *rho, double **phi) 
-{ 
-  // omega:  relaxation parameter.
-  // dx:     cell lengths of cells pointed to by the stencil.
-  // bcVals: values to impose as BCs.
-  // rho:    right-side source in the current cell.
-  // phi:    iterate cells pointed to by the stencil.
-
-  double *dxC  = dx[0]; 
-  double volFac = 0.5*dxC[0]; 
-
-  double rdxCp2[1]; 
-  double rdxCp2Sq[1]; 
-  double rdxCp2R3[1]; 
-  double rdxCp2R4[1]; 
-  double rdxCp2R6[1]; 
-  double rdxCp2R8[1]; 
-  rdxCp2[0]  = volFac/(dxC[0]*dxC[0]); 
-  rdxCp2Sq[0]  = rdxCp2[0]*rdxCp2[0]; 
-  rdxCp2R3[0]  = rdxCp2[0]*rdxCp2Sq[0]; 
-  rdxCp2R4[0]  = rdxCp2Sq[0]*rdxCp2Sq[0]; 
-  rdxCp2R6[0]  = rdxCp2Sq[0]*rdxCp2R4[0]; 
-  rdxCp2R8[0]  = rdxCp2R4[0]*rdxCp2R4[0]; 
-
-  double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
-
-  phiC[0] = (0.009622504486493766*((9.0*rho[1]+51.96152422706631*rho[0])*omega*volFac+(120.0*rdxCp2[0]*phiLx[1]+97.97958971132716*rdxCp2[0]*bcVals[1]+(103.9230484541326*phiLx[0]-103.9230484541326*phiC[0])*rdxCp2[0])*omega+103.9230484541326*phiC[0]*rdxCp2[0]))/rdxCp2[0]; 
-  phiC[1] = (0.02886751345948129*((1.732050807568877*rho[1]+5.0*rho[0])*omega*volFac+(14.14213562373095*rdxCp2[0]*bcVals[1]-34.64101615137754*rdxCp2[0]*phiC[1])*omega+34.64101615137754*rdxCp2[0]*phiC[1]))/rdxCp2[0]; 
+  phiC[0] = (((220.454076850486*rho[1]+1196.424673767639*rho[0])*bcVals[4]+(741.0479066835021*rho[0]-303.7367281051142*rho[1])*bcVals[3])*omega*volFac+(1056.0*rdx2SqVol[0]*bcVals[5]+(514.3928459844674*rdx2SqVol[0]*phiLx[1]+(521.8448045156721*phiLx[0]-521.8448045156721*phiPrevC[0])*rdx2SqVol[0])*bcVals[4]+(440.9081537009721*rdx2SqVol[0]*phiLx[1]+(500.6316010800758*phiLx[0]-1247.33636201307*phiPrevC[0])*rdx2SqVol[0])*bcVals[3])*omega+521.8448045156721*phiPrevC[0]*rdx2SqVol[0]*bcVals[4]+1247.33636201307*phiPrevC[0]*rdx2SqVol[0]*bcVals[3])/(521.8448045156721*rdx2SqVol[0]*bcVals[4]+1247.33636201307*rdx2SqVol[0]*bcVals[3]); 
+  phiC[1] = (((229.1025971044415*rho[1]+279.2418306772823*rho[0])*bcVals[4]+(220.6173157302029*rho[1]-166.5653025092562*rho[0])*bcVals[3])*omega*volFac+(415.6921938165305*rdx2SqVol[0]*bcVals[5]+(12.72792206135786*rdx2SqVol[0]*phiLx[1]-521.8448045156721*rdx2SqVol[0]*phiPrevC[1])*bcVals[4]+((-1247.33636201307*rdx2SqVol[0]*phiPrevC[1])-280.0142853498729*rdx2SqVol[0]*phiLx[1]-293.9387691339815*phiLx[0]*rdx2SqVol[0])*bcVals[3])*omega+521.8448045156721*rdx2SqVol[0]*phiPrevC[1]*bcVals[4]+1247.33636201307*rdx2SqVol[0]*phiPrevC[1]*bcVals[3])/(521.8448045156721*rdx2SqVol[0]*bcVals[4]+1247.33636201307*rdx2SqVol[0]*bcVals[3]); 
 
 }
 
@@ -370,32 +223,22 @@ void MGpoissonResidue1xSer_P1(double **dx, const double *bcVals, const double *r
   // resOut: residue in current cell.
 
   double *dxC  = dx[0]; 
-  double *dxUx = dx[1]; 
-  double *dxLx = dx[2]; 
 
   double volFac = 0.5*dxC[0]; 
 
-  double rdxCp2[1]; 
-  double rdxLx[1]; 
-  double rdxUx[1]; 
-  double rdxLxSq[1]; 
-  double rdxUxSq[1]; 
-  rdxCp2[0]  = volFac*4.0/(dxC[0]*dxC[0]); 
-  rdxLx[0]   = 1.0/dxLx[0]; 
-  rdxUx[0]   = 1.0/dxUx[0]; 
-  rdxLxSq[0] = rdxLx[0]*rdxLx[0]; 
-  rdxUxSq[0] = rdxUx[0]*rdxUx[0]; 
+  double rdx2SqVol[1]; 
+  rdx2SqVol[0]   = volFac*4.0/(dxC[0]*dxC[0]); 
 
   double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
+  double *phiLx = phi[1]; 
+  double *phiUx = phi[2]; 
 
-  resOut[0] = 0.125*(8.0*rho[0]*volFac-8.660254037844386*rdxUx[0]*phiUx[1]+8.660254037844386*rdxLx[0]*phiLx[1]+(8.660254037844386*rdxLx[0]-8.660254037844386*rdxUx[0])*phiC[1]+(9.0*phiUx[0]-9.0*phiC[0])*rdxUx[0]+(9.0*phiLx[0]-9.0*phiC[0])*rdxLx[0]); 
-  resOut[1] = 0.125*(8.0*rho[1]*volFac-7.0*rdxUx[0]*phiUx[1]-7.0*rdxLx[0]*phiLx[1]+((-23.0*rdxUx[0])-23.0*rdxLx[0])*phiC[1]+(8.660254037844386*phiUx[0]-22.5166604983954*phiC[0])*rdxUx[0]+(22.5166604983954*phiC[0]-8.660254037844386*phiLx[0])*rdxLx[0]); 
+  resOut[0] = 0.0625*(16.0*rho[0]*volFac-8.660254037844386*rdx2SqVol[0]*phiUx[1]+8.660254037844386*rdx2SqVol[0]*phiLx[1]+(9.0*phiUx[0]+9.0*phiLx[0]-18.0*phiC[0])*rdx2SqVol[0]); 
+  resOut[1] = 0.0625*(16.0*rho[1]*volFac-7.0*rdx2SqVol[0]*phiUx[1]-7.0*rdx2SqVol[0]*phiLx[1]-46.0*rdx2SqVol[0]*phiC[1]+(8.660254037844386*phiUx[0]-8.660254037844386*phiLx[0])*rdx2SqVol[0]); 
 
 }
 
-void MGpoissonResidue1xSer_LxDirichlet_P1(double **dx, const double *bcVals, const double *rho, double **phi, double *resOut) 
+void MGpoissonResidue1xSer_LxRobin_P1(double **dx, const double *bcVals, const double *rho, double **phi, double *resOut) 
 { 
   // dx:     cell lengths of cells pointed to by the stencil.
   // rho:    right-side source in the current cell.
@@ -407,29 +250,19 @@ void MGpoissonResidue1xSer_LxDirichlet_P1(double **dx, const double *bcVals, con
 
   double volFac = 0.5*dxC[0]; 
 
-  double rdxCp2[1]; 
-  double rdxCp2Sq[1]; 
-  double rdxCp2R3[1]; 
-  double rdxCp2R4[1]; 
-  double rdxCp2R6[1]; 
-  double rdxCp2R8[1]; 
-  rdxCp2[0]  = volFac/(dxC[0]*dxC[0]); 
-  rdxCp2Sq[0]  = rdxCp2[0]*rdxCp2[0]; 
-  rdxCp2R3[0]  = rdxCp2[0]*rdxCp2Sq[0]; 
-  rdxCp2R4[0]  = rdxCp2Sq[0]*rdxCp2Sq[0]; 
-  rdxCp2R6[0]  = rdxCp2Sq[0]*rdxCp2R4[0]; 
-  rdxCp2R8[0]  = rdxCp2R4[0]*rdxCp2R4[0]; 
+  double rdx2SqVol[1]; 
+  rdx2SqVol[0]   = volFac*4.0/(dxC[0]*dxC[0]); 
 
   double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
+  double *phiLx = phi[1]; 
+  double *phiUx = phi[2]; 
 
-  resOut[0] = 0.7071067811865475*(1.414213562373095*rho[0]*volFac-4.898979485566357*rdxCp2[0]*phiUx[1]+4.898979485566357*rdxCp2[0]*phiC[1]+(4.242640687119286*phiUx[0]-12.72792206135786*phiC[0]+12.0*bcVals[0])*rdxCp2[0]); 
-  resOut[1] = 0.408248290463863*(2.449489742783178*rho[1]*volFac-48.98979485566358*rdxCp2[0]*phiUx[1]-244.9489742783179*rdxCp2[0]*phiC[1]+(42.42640687119286*phiUx[0]+42.42640687119286*phiC[0]-120.0*bcVals[0])*rdxCp2[0]); 
+  resOut[0] = ((203.6467529817258*rho[0]*bcVals[1]-45.25483399593907*bcVals[0]*rho[0])*volFac-144.0*rdx2SqVol[0]*bcVals[2]+(4.898979485566357*bcVals[0]*rdx2SqVol[0]-110.227038425243*rdx2SqVol[0]*bcVals[1])*phiUx[1]+((-110.227038425243*rdx2SqVol[0]*bcVals[1])-151.8683640525571*bcVals[0]*rdx2SqVol[0])*phiC[1]+(114.5512985522207*phiUx[0]-114.5512985522207*phiC[0])*rdx2SqVol[0]*bcVals[1]+(110.3086578651014*bcVals[0]*phiC[0]-8.485281374238571*bcVals[0]*phiUx[0])*rdx2SqVol[0])/(203.6467529817258*bcVals[1]-45.25483399593907*bcVals[0]); 
+  resOut[1] = ((144.0*bcVals[1]-32.0*bcVals[0])*rho[1]*volFac+137.171425595858*rdx2SqVol[0]*bcVals[2]+(38.0*bcVals[0]*rdx2SqVol[0]-87.0*rdx2SqVol[0]*bcVals[1])*phiUx[1]+(262.0*bcVals[0]*rdx2SqVol[0]-423.0*rdx2SqVol[0]*bcVals[1])*phiC[1]+(98.726896031426*phiUx[0]-98.726896031426*phiC[0])*rdx2SqVol[0]*bcVals[1]+((-38.1051177665153*bcVals[0]*phiUx[0])-58.88972745734183*bcVals[0]*phiC[0])*rdx2SqVol[0])/(144.0*bcVals[1]-32.0*bcVals[0]); 
 
 }
 
-void MGpoissonResidue1xSer_LxNeumann_P1(double **dx, const double *bcVals, const double *rho, double **phi, double *resOut) 
+void MGpoissonResidue1xSer_UxRobin_P1(double **dx, const double *bcVals, const double *rho, double **phi, double *resOut) 
 { 
   // dx:     cell lengths of cells pointed to by the stencil.
   // rho:    right-side source in the current cell.
@@ -441,93 +274,15 @@ void MGpoissonResidue1xSer_LxNeumann_P1(double **dx, const double *bcVals, const
 
   double volFac = 0.5*dxC[0]; 
 
-  double rdxCp2[1]; 
-  double rdxCp2Sq[1]; 
-  double rdxCp2R3[1]; 
-  double rdxCp2R4[1]; 
-  double rdxCp2R6[1]; 
-  double rdxCp2R8[1]; 
-  rdxCp2[0]  = volFac/(dxC[0]*dxC[0]); 
-  rdxCp2Sq[0]  = rdxCp2[0]*rdxCp2[0]; 
-  rdxCp2R3[0]  = rdxCp2[0]*rdxCp2Sq[0]; 
-  rdxCp2R4[0]  = rdxCp2Sq[0]*rdxCp2Sq[0]; 
-  rdxCp2R6[0]  = rdxCp2Sq[0]*rdxCp2R4[0]; 
-  rdxCp2R8[0]  = rdxCp2R4[0]*rdxCp2R4[0]; 
+  double rdx2SqVol[1]; 
+  rdx2SqVol[0]   = volFac*4.0/(dxC[0]*dxC[0]); 
 
   double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
+  double *phiLx = phi[1]; 
+  double *phiUx = phi[2]; 
 
-  resOut[0] = 0.2357022603955158*(4.242640687119286*rho[0]*volFac-19.59591794226543*rdxCp2[0]*phiUx[1]-29.39387691339815*rdxCp2[0]*phiC[1]+(16.97056274847715*phiUx[0]-16.97056274847715*phiC[0]-4.0*bcVals[0])*rdxCp2[0]); 
-  resOut[1] = 0.1360827634879543*(7.348469228349534*rho[1]*volFac-97.97958971132716*rdxCp2[0]*phiUx[1]-293.9387691339815*rdxCp2[0]*phiC[1]+(84.85281374238573*phiUx[0]-84.85281374238573*phiC[0]+40.0*bcVals[0])*rdxCp2[0]); 
-
-}
-
-void MGpoissonResidue1xSer_UxDirichlet_P1(double **dx, const double *bcVals, const double *rho, double **phi, double *resOut) 
-{ 
-  // dx:     cell lengths of cells pointed to by the stencil.
-  // rho:    right-side source in the current cell.
-  // bcVals: values to impose as BCs.
-  // phi:    iterate cells pointed to by the stencil.
-  // resOut: residue in current cell.
-
-  double *dxC  = dx[0]; 
-
-  double volFac = 0.5*dxC[0]; 
-
-  double rdxCp2[1]; 
-  double rdxCp2Sq[1]; 
-  double rdxCp2R3[1]; 
-  double rdxCp2R4[1]; 
-  double rdxCp2R6[1]; 
-  double rdxCp2R8[1]; 
-  rdxCp2[0]  = volFac/(dxC[0]*dxC[0]); 
-  rdxCp2Sq[0]  = rdxCp2[0]*rdxCp2[0]; 
-  rdxCp2R3[0]  = rdxCp2[0]*rdxCp2Sq[0]; 
-  rdxCp2R4[0]  = rdxCp2Sq[0]*rdxCp2Sq[0]; 
-  rdxCp2R6[0]  = rdxCp2Sq[0]*rdxCp2R4[0]; 
-  rdxCp2R8[0]  = rdxCp2R4[0]*rdxCp2R4[0]; 
-
-  double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
-
-  resOut[0] = 0.7071067811865475*(1.414213562373095*rho[0]*volFac+4.898979485566357*rdxCp2[0]*phiLx[1]-4.898979485566357*rdxCp2[0]*phiC[1]+12.0*rdxCp2[0]*bcVals[1]+(4.242640687119286*phiLx[0]-12.72792206135786*phiC[0])*rdxCp2[0]); 
-  resOut[1] = 0.408248290463863*(2.449489742783178*rho[1]*volFac-48.98979485566358*rdxCp2[0]*phiLx[1]-244.9489742783179*rdxCp2[0]*phiC[1]+120.0*rdxCp2[0]*bcVals[1]+((-42.42640687119286*phiLx[0])-42.42640687119286*phiC[0])*rdxCp2[0]); 
-
-}
-
-void MGpoissonResidue1xSer_UxNeumann_P1(double **dx, const double *bcVals, const double *rho, double **phi, double *resOut) 
-{ 
-  // dx:     cell lengths of cells pointed to by the stencil.
-  // rho:    right-side source in the current cell.
-  // bcVals: values to impose as BCs.
-  // phi:    iterate cells pointed to by the stencil.
-  // resOut: residue in current cell.
-
-  double *dxC  = dx[0]; 
-
-  double volFac = 0.5*dxC[0]; 
-
-  double rdxCp2[1]; 
-  double rdxCp2Sq[1]; 
-  double rdxCp2R3[1]; 
-  double rdxCp2R4[1]; 
-  double rdxCp2R6[1]; 
-  double rdxCp2R8[1]; 
-  rdxCp2[0]  = volFac/(dxC[0]*dxC[0]); 
-  rdxCp2Sq[0]  = rdxCp2[0]*rdxCp2[0]; 
-  rdxCp2R3[0]  = rdxCp2[0]*rdxCp2Sq[0]; 
-  rdxCp2R4[0]  = rdxCp2Sq[0]*rdxCp2Sq[0]; 
-  rdxCp2R6[0]  = rdxCp2Sq[0]*rdxCp2R4[0]; 
-  rdxCp2R8[0]  = rdxCp2R4[0]*rdxCp2R4[0]; 
-
-  double *phiC = phi[0]; 
-  double *phiUx = phi[1]; 
-  double *phiLx = phi[2]; 
-
-  resOut[0] = 0.2357022603955158*(4.242640687119286*rho[0]*volFac+19.59591794226543*rdxCp2[0]*phiLx[1]+29.39387691339815*rdxCp2[0]*phiC[1]+4.0*rdxCp2[0]*bcVals[1]+(16.97056274847715*phiLx[0]-16.97056274847715*phiC[0])*rdxCp2[0]); 
-  resOut[1] = 0.1360827634879543*(7.348469228349534*rho[1]*volFac-97.97958971132716*rdxCp2[0]*phiLx[1]-293.9387691339815*rdxCp2[0]*phiC[1]+40.0*rdxCp2[0]*bcVals[1]+(84.85281374238573*phiC[0]-84.85281374238573*phiLx[0])*rdxCp2[0]); 
+  resOut[0] = ((203.6467529817258*rho[0]*bcVals[4]+45.25483399593907*rho[0]*bcVals[3])*volFac+144.0*rdx2SqVol[0]*bcVals[5]+(110.227038425243*rdx2SqVol[0]*phiLx[1]+110.227038425243*rdx2SqVol[0]*phiC[1]+(114.5512985522207*phiLx[0]-114.5512985522207*phiC[0])*rdx2SqVol[0])*bcVals[4]+(4.898979485566357*rdx2SqVol[0]*phiLx[1]-151.8683640525571*rdx2SqVol[0]*phiC[1]+(8.485281374238571*phiLx[0]-110.3086578651014*phiC[0])*rdx2SqVol[0])*bcVals[3])/(203.6467529817258*bcVals[4]+45.25483399593907*bcVals[3]); 
+  resOut[1] = ((144.0*rho[1]*bcVals[4]+32.0*rho[1]*bcVals[3])*volFac+137.171425595858*rdx2SqVol[0]*bcVals[5]+((-87.0*rdx2SqVol[0]*phiLx[1])-423.0*rdx2SqVol[0]*phiC[1]+(98.726896031426*phiC[0]-98.726896031426*phiLx[0])*rdx2SqVol[0])*bcVals[4]+((-38.0*rdx2SqVol[0]*phiLx[1])-262.0*rdx2SqVol[0]*phiC[1]+((-38.1051177665153*phiLx[0])-58.88972745734183*phiC[0])*rdx2SqVol[0])*bcVals[3])/(144.0*bcVals[4]+32.0*bcVals[3]); 
 
 }
 

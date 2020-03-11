@@ -176,19 +176,6 @@ function VlasovSpecies:createSolver(hasE, hasB)
       }
    end
 
-   -- Updaters for charge exchange source term
-   self.confPhaseMult = Updater.CartFieldBinOp {
-         onGrid     = self.grid,
-         weakBasis  = self.basis,
-         fieldBasis = self.confBasis,
-         operation  = "Multiply",
-   }
-   self.phaseMult = Updater.CartFieldBinOp {
-      onGrid    = self.grid,
-      weakBasis = self.basis,
-      operation = "Multiply",
-   }
-
    self.tmCouplingMom = 0.0    -- For timer.
 end
 
@@ -772,6 +759,19 @@ function VlasovSpecies:createDiagnostics()
       operation = "Divide",
       onGhosts  = true,
    }
+   -- Updaters for charge exchange source term
+   self.confPhaseMult = Updater.CartFieldBinOp {
+      onGrid     = self.grid,
+      weakBasis  = self.basis,
+      fieldBasis = self.confBasis,
+      operation  = "Multiply",
+   }
+   -- Commenting out until full phase multiplication functionality is added
+   -- self.phaseMult = Updater.CartFieldBinOp {
+   --    onGrid    = self.grid,
+   --    weakBasis = self.basis,
+   --    operation = "Multiply",
+   -- }
 
    -- Sort moments into diagnosticWeakMoments and diagnosticAuxMoments.
    for i, mom in pairs(self.diagnosticMoments) do
@@ -1023,7 +1023,7 @@ function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species)
       self.confPhaseMult:advance(tCurr, {neutM0, species[self.neutNmCX].vrelCX}, {species[self.neutNmCX].vrelM0CX})
       self.phaseMult:advance(tCurr, {self.vrelM0CX, neutDistF}, {self.vrelM0DistFCX})
       self.phaseMult:advance(tCurr, {species[self.neutNmCX].vrelM0CX, ionDistF}, {species[self.neutNmCX].vrelM0DistFCX})
-      self.diffDistF:combine(1.0, self.vrelM0DistFCX, -1.0, species[self.neutNmCX].vrelM0DistFCX) -- the error is here!
+      self.diffDistF:combine(1.0, self.vrelM0DistFCX, -1.0, species[self.neutNmCX].vrelM0DistFCX)
       self.confPhaseMult:advance(tCurr, {self.sigmaCX, self.diffDistF}, {self.srcCX})
 
    end

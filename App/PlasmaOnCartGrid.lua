@@ -287,7 +287,7 @@ local function buildApplication(self, tbl)
    -- Compute the coupling moments.
    for nm, s in pairs(species) do
       s:clearMomentFlags(species)
-      s:calcCouplingMoments(0.0, 1, species) -- HARDCODED
+      s:calcCouplingMoments(0.0, 1, species) 
    end
    -- Initialize field (sometimes requires species to have been initialized).
    field:createSolver(species, funcField)
@@ -383,7 +383,7 @@ local function buildApplication(self, tbl)
       for nm, s in pairs(species) do
 	 -- Compute moments needed in coupling with fields and
 	 -- collisions (the species should update internal datastructures). 
-         s:calcCouplingMoments(tCurr, inIdx, species) -- HARDCODED
+         s:calcCouplingMoments(tCurr, inIdx, species)
       end
 
       -- Update EM field.
@@ -906,27 +906,28 @@ function App:run()
 end
 
 return {
-   AdiabaticSpecies   = Species.AdiabaticSpecies,
-   App                = App,
-   ChargeExchange     = Collisions.ChargeExchange,
-   FluidDiffusion     = Collisions.FluidDiffusion,
-   FuncMaxwellField   = Field.FuncMaxwellField,
-   FuncVlasovSpecies  = Species.FuncVlasovSpecies,
-   GkBGKCollisions    = Collisions.GKLBOCollisions,   
-   GkField            = Field.GkField,
-   GkGeometry         = Field.GkGeometry,
-   GkLBOCollisions    = Collisions.GkLBOCollisions,
-   GkSpecies          = Species.GkSpecies,
-   HamilVlasovSpecies = Species.HamilVlasovSpecies,
-   IncompEulerSpecies = Species.IncompEulerSpecies,
-   MaxwellField       = Field.MaxwellField,
-   MomentSpecies      = Species.MomentSpecies,
-   NoField            = Field.NoField,
-   Projection         = Projection,
-   VlasovSpecies      = Species.VlasovSpecies,
-   VmBGKCollisions    = Collisions.VmBGKCollisions,   
-   VmLBOCollisions    = Collisions.VmLBOCollisions,
-   VoronovIonization  = Collisions.VoronovIonization,
+   AdiabaticSpecies    = Species.AdiabaticSpecies,
+   App                 = App,
+   ChargeExchange      = Collisions.ChargeExchange,
+   FluidDiffusion      = Collisions.FluidDiffusion,
+   FuncMaxwellField    = Field.FuncMaxwellField,
+   FuncVlasovSpecies   = Species.FuncVlasovSpecies,
+   GkBGKCollisions     = Collisions.GKLBOCollisions,   
+   GkField             = Field.GkField,
+   GkGeometry          = Field.GkGeometry,
+   GkLBOCollisions     = Collisions.GkLBOCollisions,
+   GkSpecies           = Species.GkSpecies,
+   GkVoronovIonization = Collisions.GkVoronovIonization,
+   HamilVlasovSpecies  = Species.HamilVlasovSpecies,
+   IncompEulerSpecies  = Species.IncompEulerSpecies,
+   MaxwellField        = Field.MaxwellField,
+   MomentSpecies       = Species.MomentSpecies,
+   NoField             = Field.NoField,
+   Projection          = Projection,
+   VlasovSpecies       = Species.VlasovSpecies,
+   VmBGKCollisions     = Collisions.VmBGKCollisions,   
+   VmLBOCollisions     = Collisions.VmLBOCollisions,
+   VmVoronovIonization = Collisions.VmVoronovIonization,
 
    -- Valid pre-packaged species-field systems.
    Gyrokinetic = {
@@ -937,6 +938,7 @@ return {
       LBOCollisions        = Collisions.GkLBOCollisions,
       BgkCollisions        = Collisions.GkBGKCollisions,
       LboCollisions        = Collisions.GkLBOCollisions,
+      VoronovIonization    = Collisions.GkVoronovIonization,
       AdiabaticSpecies     = Species.AdiabaticSpecies,
    },
    IncompEuler = {
@@ -954,7 +956,7 @@ return {
       BgkCollisions        = Collisions.VmBGKCollisions,
       LboCollisions        = Collisions.VmLBOCollisions,
       ChargeExchange       = Collisions.ChargeExchange,
-      VoronovIonization    = Collisions.VoronovIonization,
+      VoronovIonization    = Collisions.VmVoronovIonization,
    },
    Moments = {
       App = App, Species = Species.MomentSpecies, Field = Field.MaxwellField,

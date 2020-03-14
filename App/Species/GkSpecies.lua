@@ -550,6 +550,27 @@ function GkSpecies:initCrossSpeciesCoupling(species)
       end
    end
 
+   -- If Voronov collision object exists, locate electrons
+   for sN, _ in pairs(species) do
+      if species[sN].collisions and next(species[sN].collisions) then 
+         for sO, _ in pairs(species) do
+	    if self.collPairs[sN][sO].on then
+	       if (self.collPairs[sN][sO].kind == 'Voronov') then
+		  for collNm, _ in pairs(species[sN].collisions) do
+		     if self.name==species[sN].collisions[collNm].elcNm then
+			self.needSelfPrimMom  = true
+			self.calcReactRate    = true
+			self.collNmVoronov    = collNm
+			self.voronovReactRate = self:allocMoment()
+			self.ionizationVtSq   = self:allocMoment()
+		     end
+		  end
+	       end
+	    end
+	 end
+      end
+   end
+
    if self.needSelfPrimMom then
       -- Allocate fields to store self-species primitive moments.
       self.uParSelf = self:allocMoment()
@@ -632,7 +653,12 @@ function GkSpecies:initCrossSpeciesCoupling(species)
 
 end
 
+function GkSpecies:setActiveRKidx(rkIdx)
+   self.activeRKidx = rkIdx
+end
+
 function GkSpecies:advance(tCurr, species, emIn, inIdx, outIdx)
+   self:setActiveRKidx(inIdx)
    self.tCurr = tCurr
    local fIn = self:rkStepperFields()[inIdx]
    local fRhsOut = self:rkStepperFields()[outIdx]
@@ -1145,7 +1171,7 @@ function GkSpecies:appendBoundaryConditions(dir, edge, bcType)
    end
 end
 
-function GkSpecies:calcCouplingMoments(tCurr, rkIdx)
+function GkSpecies:calcCouplingMoments(tCurr, rkIdx, species)
    local fIn = self:rkStepperFields()[rkIdx]
 
    -- Compute moments needed in coupling to fields and collisions.
@@ -1190,6 +1216,12 @@ function GkSpecies:calcCouplingMoments(tCurr, rkIdx)
         fIn:accumulate(1.0, self.f0)
       end
 
+      if self.calcReactRate then
+	 -- compute voronov reaction self.vornovReactRate
+	 species[self.name].collisions[self.collNmVoronov].calcVoronovReactRate:advance(tCurr, {self.vtSqSelf}, {self.voronovReactRate})
+	 species[self.name].collisions[self.collNmVoronov].calcIonizationTemp:advance(tCurr, {self.vtSqSelf}, {self.ionizationVtSq})
+      end
+      
       self.tmCouplingMom = self.tmCouplingMom + Time.clock() - tmStart
    end
    if not self.evolve then self._firstMomentCalc = false end
@@ -1213,6 +1245,14 @@ end
 
 function GkSpecies:crossPrimitiveMoments(otherSpeciesName)
    return { self.uParCross[otherSpeciesName], self.vtSqCross[otherSpeciesName] }
+end
+
+function GkSpecies:getDistF(rkIdx)
+   if rkIdx == nil then
+      return self:rkStepperFields()[self.activeRKidx]
+   else
+      return self:rkStepperFields()[self.rkIdx]
+   end
 end
 
 function GkSpecies:getNumDensity(rkIdx)
@@ -1317,6 +1357,14 @@ function GkSpecies:momCalcTime()
       tm = tm + self.diagnosticMomentUpdaters[mom].totalTime
    end
    return tm
+end
+
+function GkSpecies:getVoronovReactRate()
+   return self.voronovReactRate
+end
+
+function GkSpecies:getIonizationVtSq()
+   return self.ionizationVtSq
 end
 
 function GkSpecies:solverVolTime()

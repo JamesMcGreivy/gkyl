@@ -1009,7 +1009,6 @@ function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species)
       -- Indicate that first moment has been computed.
       self.momentFlags[1] = true
    end
-   self.tmCouplingMom = self.tmCouplingMom + Time.clock() - tmStart
 
    if self.calcReactRate then
       -- compute voronov reaction self.vornovReactRate
@@ -1039,6 +1038,8 @@ function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species)
       self.confPhaseMult:advance(tCurr, {self.sigmaCX, self.diffDistF}, {self.srcCX})
 
    end
+   
+   self.tmCouplingMom = self.tmCouplingMom + Time.clock() - tmStart
 
 end
 

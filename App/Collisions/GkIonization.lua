@@ -1,6 +1,7 @@
 -- Gkyl ------------------------------------------------------------------------
 --
--- PlasmaOnCartGrid support code: Voronov ionization operator
+-- PlasmaOnCartGrid support code: Ionization operator using Voronov
+-- reaction rate.
 -- See:
 -- Voronov, G.S., 1997. A practical fit formula for ionization rate
 -- coefficients of atoms and ions by electron impact: Z= 1–28. Atomic
@@ -18,27 +19,27 @@ local Mpi            = require "Comm.Mpi"
 local lume           = require "Lib.lume"
 local xsys           = require "xsys"
 
--- VmVoronovIonization -----------------------------------------------------------
+-- GkIonization -----------------------------------------------------------
 --
 -- Voronov ionization operator.
 --------------------------------------------------------------------------------
 
-local VmVoronovIonization = Proto(CollisionsBase)
+local GkIonization = Proto(CollisionsBase)
 
 -- This ctor simply stores what is passed to it and defers actual
 -- construction to the fullInit() method below.
-function VmVoronovIonization:init(tbl)
+function GkIonization:init(tbl)
    self.tbl = tbl
 end
 
 -- Actual function for initialization. This indirection is needed as
 -- we need the app top-level table for proper initialization.
-function VmVoronovIonization:fullInit(speciesTbl)
+function GkIonization:fullInit(speciesTbl)
    local tbl = self.tbl -- Previously store table.
 
-   self.collKind = "Voronov"
+   self.collKind = "Ionization"
 
-   self.collidingSpecies = assert(tbl.collideWith, "App.VmVoronovIonization: Must specify names of species to collide with in 'collideWith'.")
+   self.collidingSpecies = assert(tbl.collideWith, "App.GkIonization: Must specify names of species to collide with in 'collideWith'.")
 
    -- Set these values to be consistent with other collision apps
    self.selfCollisions  = false
@@ -49,8 +50,8 @@ function VmVoronovIonization:fullInit(speciesTbl)
    
    self.collideNm   = tbl.collideWith[1]
    
-   self.elcNm       = assert(tbl.electrons, "App.VmVoronovIonization: Must specify electron species name in 'electrons'.")
-   self.neutNm      = assert(tbl.neutrals, "App.VmVoronovIonization: Must specify electron species name in 'neutrals'.")
+   self.elcNm       = assert(tbl.electrons, "App.GkIonization: Must specify electron species name in 'electrons'.")
+   self.neutNm      = assert(tbl.neutrals, "App.GkIonization: Must specify electron species name in 'neutrals'.")
    
    self.plasma      = tbl.plasma
    self.mass        = tbl.elcMass
@@ -67,33 +68,33 @@ function VmVoronovIonization:fullInit(speciesTbl)
    self._tmEvalMom = 0.0 
 end
 
-function VmVoronovIonization:setName(nm)
+function GkIonization:setName(nm)
    self.name = nm
 end
-function VmVoronovIonization:setSpeciesName(nm)
+function GkIonization:setSpeciesName(nm)
    self.speciesName = nm
 end
 
-function VmVoronovIonization:setCfl(cfl)
+function GkIonization:setCfl(cfl)
    self.cfl = cfl
 end
 
-function VmVoronovIonization:setConfBasis(basis)
+function GkIonization:setConfBasis(basis)
    self.confBasis = basis
 end
-function VmVoronovIonization:setConfGrid(grid)
+function GkIonization:setConfGrid(grid)
    self.confGrid = grid
 end
 
-function VmVoronovIonization:setPhaseBasis(basis)
+function GkIonization:setPhaseBasis(basis)
    self.phaseBasis = basis
 end
 
-function VmVoronovIonization:setPhaseGrid(grid)
+function GkIonization:setPhaseGrid(grid)
    self.phaseGrid = grid
 end
 
-function VmVoronovIonization:createSolver(funcField)
+function GkIonization:createSolver(funcField)
    if (self.speciesName == self.elcNm) then
       self.calcVoronovReactRate = Updater.VoronovReactRateCoef {
 	 onGrid     = self.confGrid,
@@ -113,7 +114,7 @@ function VmVoronovIonization:createSolver(funcField)
 	 confBasis  = self.confBasis,
 	 elcMass    = self.mass,
 	 elemCharge = self.charge,
-      	 E          = self._E,       -- ionization energy
+      	 E          = self._E,
       }
       -- fields for elc ionization maxwellian
       self.maxwellIz = Updater.MaxwellianOnBasis {
@@ -162,7 +163,7 @@ function VmVoronovIonization:createSolver(funcField)
       numComponents = self.phaseBasis:numBasis(),
       ghost         = {1, 1},
    }
-   self.voronovSrc = DataStruct.Field {
+   self.ionizSrc = DataStruct.Field {
       onGrid        = self.phaseGrid,
       numComponents = self.phaseBasis:numBasis(),
       ghost         = {1, 1},
@@ -181,7 +182,7 @@ function VmVoronovIonization:createSolver(funcField)
    }
 end
 
-function VmVoronovIonization:advance(tCurr, fIn, species, fRhsOut)
+function GkIonization:advance(tCurr, fIn, species, fRhsOut)
    local coefIz = species[self.elcNm]:getVoronovReactRate()
    local distFn = species[self.neutNm]:getDistF()
    local elcM0  = species[self.elcNm]:fluidMoments()[1]
@@ -203,44 +204,48 @@ function VmVoronovIonization:advance(tCurr, fIn, species, fRhsOut)
       self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
       
       self.confMult:advance(tCurr, {coefIz, neutM0}, {self.coefM0})
-      self.collisionSlvr:advance(tCurr, {self.coefM0, self.sumDistF}, {self.voronovSrc})
+      self.collisionSlvr:advance(tCurr, {self.coefM0, self.sumDistF}, {self.ionizSrc})
        
-      fRhsOut:accumulate(1.0,self.voronovSrc)
+      fRhsOut:accumulate(1.0,self.ionizSrc)
    elseif (species[self.speciesName].charge == 0) then
       -- neutrals
       tmEvalMomStart = Time.clock()
       self.m0elc:copy(elcM0)
+      --self.m0elc:write(string.format("m0eInNeut_%d.bp",tCurr*1e9),0,0,false)
       self.neutDistF:copy(distFn)
-
+      --self.neutDistF:write(string.format("FnInNeut_%d.bp",tCurr*1e9),0,0,false)
+      
       self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
       
       self.confMult:advance(tCurr, {coefIz, self.m0elc}, {self.coefM0})
-      self.collisionSlvr:advance(tCurr, {self.coefM0, self.neutDistF}, {self.voronovSrc})
-      fRhsOut:accumulate(-1.0,self.voronovSrc)  
+      self.collisionSlvr:advance(tCurr, {self.coefM0, self.neutDistF}, {self.ionizSrc})
+      fRhsOut:accumulate(-1.0,self.ionizSrc)  
    else
       -- ions 
       tmEvalMomStart = Time.clock()
       self.m0elc:copy(elcM0)
+      --self.m0elc:write(string.format("m0eInIon_%d.bp",tCurr*1e9),0,0,false)
       self.neutDistF:copy(distFn)
-
+      --self.neutDistF:write(string.format("FnInIon_%d.bp",tCurr*1e9),0,0,false)
+      
       self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
 
       self.confMult:advance(tCurr, {coefIz, self.m0elc}, {self.coefM0})
-      self.collisionSlvr:advance(tCurr, {self.coefM0, self.neutDistF}, {self.voronovSrc})
-      fRhsOut:accumulate(1.0,self.voronovSrc)
+      self.collisionSlvr:advance(tCurr, {self.coefM0, self.neutDistF}, {self.ionizSrc})
+      fRhsOut:accumulate(1.0,self.ionizSrc)
    end
 end
    
-function VmVoronovIonization:write(tm, frame)
+function GkIonization:write(tm, frame)
 end
 
-function VmVoronovIonization:slvrTime()
+function GkIonization:slvrTime()
    local time = self.confMult.totalTime
    time = time + self.collisionSlvr.totalTime
    return time
 end
 
-function VmVoronovIonization:momTime()
+function GkIonization:momTime()
     if (self.speciesName == self.elcNm) then 
        return self.calcVoronovReactRate:evalMomTime() + self._tmEvalMom
     else
@@ -248,11 +253,11 @@ function VmVoronovIonization:momTime()
     end
 end
 
-function VmVoronovIonization:projectMaxwellTime()
+function GkIonization:projectMaxwellTime()
    local time = self.confMult.projectMaxwellTime()
    time = time + self.collisionSlvr.projectMaxwellTime
    return time
 end
 
-return VmVoronovIonization
+return GkIonization
 

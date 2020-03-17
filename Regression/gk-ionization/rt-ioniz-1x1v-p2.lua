@@ -77,7 +77,7 @@ sim = Plasma.App {
       diagnosticMoments = { "GkM0", "GkM1", "GkM2", "GkUpar", "GkVtSq"},
       diagnosticIntegratedMoments = {"intM0", "intM1",
 				     "intM2" },
-      ionization = Plasma.VoronovIonization {
+      ionization = Plasma.Ionization {
       	 collideWith  = {"neut"},
       	 electrons    = "elc",
 	 neutrals     = "neut",
@@ -114,7 +114,7 @@ sim = Plasma.App {
       diagnosticMoments = { "GkM0", "GkM1", "GkM2", "GkUpar", "GkVtSq"},
       diagnosticIntegratedMoments = {"intM0", "intM1",
 				     "intM2" },
-      ionization = Plasma.VoronovIonization {
+      ionization = Plasma.Ionization {
       	 collideWith  = {"neut"},
       	 electrons    = "elc",
 	 neutrals     = "neut",
@@ -149,7 +149,7 @@ sim = Plasma.App {
       diagnosticMoments = { "GkM0", "GkM1", "GkM2", "GkUpar", "GkVtSq"},
       diagnosticIntegratedMoments = {"intM0", "intM1",
 				     "intM2" },
-      ionization = Plasma.VoronovIonization {
+      ionization = Plasma.Ionization {
       	 collideWith  = {"elc"},
       	 electrons    = "elc",
 	 neutrals     = "neut",

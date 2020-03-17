@@ -550,17 +550,17 @@ function GkSpecies:initCrossSpeciesCoupling(species)
       end
    end
 
-   -- If Voronov collision object exists, locate electrons
+   -- If ionization collision object exists, locate electrons
    for sN, _ in pairs(species) do
       if species[sN].collisions and next(species[sN].collisions) then 
          for sO, _ in pairs(species) do
 	    if self.collPairs[sN][sO].on then
-	       if (self.collPairs[sN][sO].kind == 'Voronov') then
+	       if (self.collPairs[sN][sO].kind == 'Ionization') then
 		  for collNm, _ in pairs(species[sN].collisions) do
 		     if self.name==species[sN].collisions[collNm].elcNm then
 			self.needSelfPrimMom  = true
 			self.calcReactRate    = true
-			self.collNmVoronov    = collNm
+			self.collNmIoniz      = collNm
 			self.voronovReactRate = self:allocMoment()
 			self.ionizationVtSq   = self:allocMoment()
 		     end
@@ -1218,8 +1218,8 @@ function GkSpecies:calcCouplingMoments(tCurr, rkIdx, species)
 
       if self.calcReactRate then
 	 -- compute voronov reaction self.vornovReactRate
-	 species[self.name].collisions[self.collNmVoronov].calcVoronovReactRate:advance(tCurr, {self.vtSqSelf}, {self.voronovReactRate})
-	 species[self.name].collisions[self.collNmVoronov].calcIonizationTemp:advance(tCurr, {self.vtSqSelf}, {self.ionizationVtSq})
+	 species[self.name].collisions[self.collNmIoniz].calcVoronovReactRate:advance(tCurr, {self.vtSqSelf}, {self.voronovReactRate})
+	 species[self.name].collisions[self.collNmIoniz].calcIonizationTemp:advance(tCurr, {self.vtSqSelf}, {self.ionizationVtSq})
       end
       
       self.tmCouplingMom = self.tmCouplingMom + Time.clock() - tmStart

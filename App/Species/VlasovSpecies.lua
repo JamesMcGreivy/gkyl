@@ -778,12 +778,11 @@ function VlasovSpecies:createDiagnostics()
       fieldBasis = self.confBasis,
       operation  = "Multiply",
    }
-   -- Commenting out until full phase multiplication functionality is added
-   -- self.phaseMult = Updater.CartFieldBinOp {
-   --    onGrid    = self.grid,
-   --    weakBasis = self.basis,
-   --    operation = "Multiply",
-   -- }
+   self.phaseMult = Updater.CartFieldBinOp {
+      onGrid    = self.grid,
+      weakBasis = self.basis,
+      operation = "Multiply",
+   }
 
    -- Sort moments into diagnosticWeakMoments and diagnosticAuxMoments.
    for i, mom in pairs(self.diagnosticMoments) do

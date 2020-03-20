@@ -96,7 +96,7 @@ end
 
 function ChargeExchange:createSolver(funcField) --species)
 
-   self.calcVrelCX = Updater.RelativeVelocityCX {
+   self.calcVrelProdCX = Updater.RelVelProdCX {
 	 onGrid     = self.phaseGrid,
 	 confBasis  = self.confBasis,
 	 phaseBasis = self.phaseBasis,

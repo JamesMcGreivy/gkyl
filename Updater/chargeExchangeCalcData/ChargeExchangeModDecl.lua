@@ -14,8 +14,8 @@ local basisNmMap = { ["serendipity"] = "Ser", ["maximal-order"] = "Max" }
 local _M = {}
 
 -- Kernel function to compute relative velocity for Pauls CX model. 
-function _M.vrelCX(basisNm, CDIM, VDIM, polyOrder)
-   local funcNm = string.format("vrelCXcellAv%s%dx%dv_P%d", basisNmMap[basisNm], CDIM, VDIM, polyOrder)
+function _M.vrelProdCX(basisNm, CDIM, VDIM, polyOrder)
+   local funcNm = string.format("prodCXcellAv%s%dx%dv_P%d", basisNmMap[basisNm], CDIM, VDIM, polyOrder)
    return ffi.C[funcNm]
 end
 

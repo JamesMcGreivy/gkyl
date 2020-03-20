@@ -439,17 +439,7 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
 			self.needSelfPrimMom  = true
 			self.sigmaCX          = self:allocMoment()
 			-- Define fields needed to calculate source term
-			self.vrelCX   = DataStruct.Field {
-			   onGrid        = self.grid,
-			   numComponents = self.basis:numBasis(),
-			   ghost         = {1, 1},
-			}
-			self.vrelM0CX = DataStruct.Field {
-			   onGrid        = self.grid,
-			   numComponents = self.basis:numBasis(),
-			   ghost         = {1, 1},
-			}
-			self.vrelM0DistFCX = DataStruct.Field {
+			self.vrelProdCX   = DataStruct.Field {
 			   onGrid        = self.grid,
 			   numComponents = self.basis:numBasis(),
 			   ghost         = {1, 1},
@@ -467,17 +457,7 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
 		     elseif self.name==species[sN].collisions[collNm].neutNm then
 			self.needSelfPrimMom  = true
 			-- Define fields needed to calculate source term
-			self.vrelCX   = DataStruct.Field {
-			   onGrid        = self.grid,
-			   numComponents = self.basis:numBasis(),
-			   ghost         = {1, 1},
-			}
-			self.vrelM0CX = DataStruct.Field {
-			   onGrid        = self.grid,
-			   numComponents = self.basis:numBasis(),
-			   ghost         = {1, 1},
-			}
-			self.vrelM0DistFCX = DataStruct.Field {
+			self.vrelProdCX   = DataStruct.Field {
 			   onGrid        = self.grid,
 			   numComponents = self.basis:numBasis(),
 			   ghost         = {1, 1},
@@ -779,11 +759,11 @@ function VlasovSpecies:createDiagnostics()
       operation  = "Multiply",
    }
    -- Commenting out until full phase multiplication functionality is added
-   -- self.phaseMult = Updater.CartFieldBinOp {
-   --    onGrid    = self.grid,
-   --    weakBasis = self.basis,
-   --    operation = "Multiply",
-   -- }
+   self.phaseMult = Updater.CartFieldBinOp {
+      onGrid    = self.grid,
+      weakBasis = self.basis,
+      operation = "Multiply",
+   }
 
    -- Sort moments into diagnosticWeakMoments and diagnosticAuxMoments.
    for i, mom in pairs(self.diagnosticMoments) do
@@ -1020,21 +1000,14 @@ function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species)
       -- calculate CX cross section
       species[self.name].collisions[self.collNmCX].collisionSlvr:advance(tCurr, {self.uSelf, species[self.neutNmCX].uSelf, self.vtSqSelf, species[self.neutNmCX].vtSqSelf}, {self.sigmaCX})
       
-      -- calculate relative velocities
-      species[self.name].collisions[self.collNmCX].calcVrelCX:advance(tCurr, {self.uSelf, self.vtSqSelf}, {self.vrelCX})
-      species[self.neutNmCX].collisions[self.collNmCX].calcVrelCX:advance(tCurr, {species[self.neutNmCX].uSelf, species[self.neutNmCX].vtSqSelf}, {species[self.neutNmCX].vrelCX})
+      -- calculate relative velocities products
+      local fIon  = species[self.name]:getDistF()
+      local fNeut = species[self.neutNmCX]:getDistF()
+      
+      species[self.name].collisions[self.collNmCX].calcVrelProdCX:advance(tCurr, {self.numDensity, self.uSelf, self.vtSqSelf, fNeut}, {self.vrelProdCX})
+      species[self.neutNmCX].collisions[self.collNmCX].calcVrelProdCX:advance(tCurr, {species[self.neutNmCX].numDensity, species[self.neutNmCX].uSelf, species[self.neutNmCX].vtSqSelf, fIon}, {species[self.neutNmCX].vrelProdCX})
 
-      -- compute source term for charge exchange
-      local ionM0     = species[self.name]:fluidMoments()[1]
-      local ionDistF  = species[self.name]:getDistF()
-      local neutM0    = species[self.neutNmCX]:fluidMoments()[1]
-      local neutDistF = species[self.neutNmCX]:getDistF()
-
-      self.confPhaseMult:advance(tCurr, {ionM0, self.vrelCX}, {self.vrelM0CX})
-      self.confPhaseMult:advance(tCurr, {neutM0, species[self.neutNmCX].vrelCX}, {species[self.neutNmCX].vrelM0CX})
-      self.phaseMult:advance(tCurr, {self.vrelM0CX, neutDistF}, {self.vrelM0DistFCX})
-      self.phaseMult:advance(tCurr, {species[self.neutNmCX].vrelM0CX, ionDistF}, {species[self.neutNmCX].vrelM0DistFCX})
-      self.diffDistF:combine(1.0, self.vrelM0DistFCX, -1.0, species[self.neutNmCX].vrelM0DistFCX)
+      self.diffDistF:combine(1.0, self.vrelProdCX, -1.0, species[self.neutNmCX].vrelProdCX)
       self.confPhaseMult:advance(tCurr, {self.sigmaCX, self.diffDistF}, {self.srcCX})
 
    end

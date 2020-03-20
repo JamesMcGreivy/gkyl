@@ -31,7 +31,7 @@ local MaxwellianOnBasis = require "Updater.MaxwellianOnBasis"
 local PositivityCheck = require "Updater.PositivityCheck"
 local PositivityRescale = require "Updater.PositivityRescale"
 local ProjectOnBasis = require "Updater.ProjectOnBasis"
-local RelativeVelocityCX = require "Updater.RelativeVelocityCX"
+local RelVelProdCX = require "Updater.RelVelProdCX"
 local SelfPrimMoments = require "Updater.SelfPrimMoments"
 local SigmaCXcalc = require "Updater.SigmaCXcalc"
 local SolidSurface = require "Updater.SolidSurface"
@@ -67,7 +67,7 @@ return {
    MaxwellianOnBasis = MaxwellianOnBasis,
    PositivityCheck = PositivityCheck,
    PositivityRescale = PositivityRescale,
-   RelativeVelocityCX = RelativeVelocityCX,
+   RelVelProdCX = RelVelProdCX,
    ProjectOnBasis = ProjectOnBasis,
    SelfPrimMoments = SelfPrimMoments,
    SigmaCXcalc = SigmaCXcalc,

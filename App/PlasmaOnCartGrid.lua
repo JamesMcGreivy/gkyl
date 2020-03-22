@@ -915,11 +915,11 @@ end
 return {
    AdiabaticSpecies    = Species.AdiabaticSpecies,
    App                 = App,
-   ChargeExchange      = Collisions.ChargeExchange,
    FluidDiffusion      = Collisions.FluidDiffusion,
    FuncMaxwellField    = Field.FuncMaxwellField,
    FuncVlasovSpecies   = Species.FuncVlasovSpecies,
    GkBGKCollisions     = Collisions.GKLBOCollisions,   
+   GkChargeExchange    = Collisions.GkChargeExchange,
    GkField             = Field.GkField,
    GkGeometry          = Field.GkGeometry,
    GkLBOCollisions     = Collisions.GkLBOCollisions,
@@ -933,6 +933,7 @@ return {
    Projection          = Projection,
    VlasovSpecies       = Species.VlasovSpecies,
    VmBGKCollisions     = Collisions.VmBGKCollisions,   
+   VmChargeExchange    = Collisions.VmChargeExchange,
    VmLBOCollisions     = Collisions.VmLBOCollisions,
    VmIonization        = Collisions.VmIonization,
 
@@ -945,6 +946,7 @@ return {
       LBOCollisions        = Collisions.GkLBOCollisions,
       BgkCollisions        = Collisions.GkBGKCollisions,
       LboCollisions        = Collisions.GkLBOCollisions,
+      ChargeExchange       = Collisions.GkChargeExchange,
       Ionization           = Collisions.GkIonization,
       AdiabaticSpecies     = Species.AdiabaticSpecies,
    },
@@ -962,7 +964,7 @@ return {
       LBOCollisions        = Collisions.VmLBOCollisions,
       BgkCollisions        = Collisions.VmBGKCollisions,
       LboCollisions        = Collisions.VmLBOCollisions,
-      ChargeExchange       = Collisions.ChargeExchange,
+      ChargeExchange       = Collisions.VmChargeExchange,
       Ionization           = Collisions.VmIonization,
    },
    Moments = {

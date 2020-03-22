@@ -26,7 +26,9 @@ function SigmaCX:init(tbl)
    self._confBasis  = assert(tbl.confBasis,
 			     "Updater.SigmaCX: Must provide configuration space basis object using 'confBasis'")
    self._phaseBasis = assert(tbl.phaseBasis,
-			     "Updater.SigmaCX: Must provide configuration space basis object using 'phaseBasis'")
+			     "Updater.SigmaCX: Must provide phase space basis object using 'phaseBasis'")
+   self._kineticSpecies = assert(tbl.kineticSpecies,
+			   "Updater.SigmaCX: Must provide solver type (Vm or Gk) using 'kineticSpecies'")
    self._a = assert(tbl.a,
 		    "Updater.SigmaCX: Must provide fitting constant a using 'a'")
    self._b = assert(tbl.b,
@@ -44,9 +46,15 @@ function SigmaCX:init(tbl)
    -- Number of basis functions.
    self._numBasis = self._confBasis:numBasis()
 
-   -- Define relative velocity calculation
-   self._calcSigmaCX = ChargeExchangeDecl.sigmaCX(self._basisID, self._cDim, self._vDim, self._polyOrder)
-
+   -- Define CX cross section calculation
+   if self._kineticSpecies == "Vm" then
+      self._calcSigmaCX = ChargeExchangeDecl.VmSigmaCX(self._basisID, self._cDim, self._vDim, self._polyOrder)
+   elseif self._kineticSpecies == "Gk" then 
+      self._calcSigmaCX = ChargeExchangeDecl.GkSigmaCX(self._basisID, self._cDim, self._vDim, self._polyOrder)
+   else
+      print("Updater.SigmaCX: 'kineticSpecies must be 'Vm' or 'Gk'")
+   end
+   
    self.onGhosts = xsys.pickBool(false, tbl.onGhosts)
 
    self._tmEvalMom = 0.0
@@ -73,9 +81,9 @@ function SigmaCX:_advance(tCurr, inFld, outFld)
    local vtSqIonItr   = vtSqIon:get(1)
    local vtSqNeutItr  = vtSqNeut:get(1)
  
-   local sigmaCXItr     = sigmaCX:get(1)
+   local sigmaCXItr   = sigmaCX:get(1)
 
-   local confRange = uIon:localRange()
+   local confRange = vtSqIon:localRange()
 
    local confRangeDecomp = LinearDecomp.LinearDecompRange {
       range = confRange:selectFirst(cDim), numSplit = grid:numSharedProcs() }

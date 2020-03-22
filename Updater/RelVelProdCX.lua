@@ -16,20 +16,21 @@ local Lin                = require "Lib.Linalg"
 local Time               = require "Lib.Time"
 
 -- Charge exchange collisions updater object.
-local relVelProdCX = Proto(UpdaterBase)
+local RelVelProdCX = Proto(UpdaterBase)
 
 ----------------------------------------------------------------------
 -- Updater Initialization --------------------------------------------
-function relVelProdCX:init(tbl)
-   relVelProdCX.super.init(self, tbl) -- setup base object
+function RelVelProdCX:init(tbl)
+   RelVelProdCX.super.init(self, tbl) -- setup base object
 
    self._onGrid     = assert(tbl.onGrid,
-			     "Updater.relVelProdCX: Must provide grid object using 'onGrid'")
+			     "Updater.RelVelProdCX: Must provide grid object using 'onGrid'")
    self._confBasis  = assert(tbl.confBasis,
-			     "Updater.relVelProdCX: Must provide configuration space basis object using 'confBasis'")
+			     "Updater.RelVelProdCX: Must provide configuration space basis object using 'confBasis'")
    self._phaseBasis = assert(tbl.phaseBasis,
-			     "Updater.relVelProdCX: Must provide phase space basis object using 'phaseBasis'")
-   
+			     "Updater.RelVelProdCX: Must provide phase space basis object using 'phaseBasis'")
+   self._kineticSpecies = assert(tbl.kineticSpecies,
+			   "Updater.RelVelProdCX: Must provide solver type (Vm or Gk) using 'kineticSpecies'")   
    -- Dimension of spaces.
    self._pDim = self._phaseBasis:ndim()
    self._cDim = self._confBasis:ndim()
@@ -46,8 +47,14 @@ function relVelProdCX:init(tbl)
    self.xc  = Lin.Vec(self._pDim)
 
    -- Define relative velocity calculation
-   self._relVelProdCXCalc = ChargeExchangeDecl.vrelProdCX(self._basisID, self._cDim, self._vDim, self._polyOrder)
-
+   if self._kineticSpecies == "Vm" then
+      self._calcRelVelProdCX = ChargeExchangeDecl.VmVrelProdCX(self._basisID, self._cDim, self._vDim, self._polyOrder)
+   elseif self._kineticSpecies == "Gk" then 
+      self._calcRelVelProdCX = ChargeExchangeDecl.GkVrelProdCX(self._basisID, self._cDim, self._vDim, self._polyOrder)
+   else
+      print("Updater.SigmaCX: 'kineticSpecies must be 'Vm' or 'Gk'")
+   end
+   
    self.onGhosts = xsys.pickBool(false, tbl.onGhosts)
 
    self._tmEvalMom = 0.0
@@ -55,18 +62,18 @@ end
 
 ----------------------------------------------------------------------
 -- Updater Advance ---------------------------------------------------
-function relVelProdCX:_advance(tCurr, inFld, outFld)
+function RelVelProdCX:_advance(tCurr, inFld, outFld)
    local tmEvalMomStart = Time.clock()
    local grid = self._onGrid
    local pDim = self._pDim
 
-   local m0     = assert(inFld[1], "relVelProdCX.advance: Must specify particle density as input[1]")
-   local u      = assert(inFld[2], "relVelProdCX.advance: Must specify fluid velocity as input[2]")
-   local vtSq   = assert(inFld[3], "relVelProdCX.advance: Must specify squared thermal velocity as input[3]")
-   local fOther = assert(inFld[4], "relVelProdCX.advance: Must specify distF of other species as input[4]")
-   local prodCX = assert(outFld[1], "relVelProdCX.advance: Must specify an output field")
+   local m0     = assert(inFld[1], "RelVelProdCX.advance: Must specify particle density as input[1]")
+   local u      = assert(inFld[2], "RelVelProdCX.advance: Must specify fluid velocity as input[2]")
+   local vtSq   = assert(inFld[3], "RelVelProdCX.advance: Must specify squared thermal velocity as input[3]")
+   local fOther = assert(inFld[4], "RelVelProdCX.advance: Must specify distF of other species as input[4]")
+   local prodCX = assert(outFld[1], "RelVelProdCX.advance: Must specify an output field")
    
-   local confIndexer  = u:genIndexer()
+   local confIndexer  = vtSq:genIndexer()
    local phaseIndexer = prodCX:genIndexer()
 
    local m0Itr     = m0:get(1)   
@@ -92,12 +99,12 @@ function relVelProdCX:_advance(tCurr, inFld, outFld)
       fOther:fill(phaseIndexer(pIdx), fOtherItr)
       prodCX:fill(phaseIndexer(pIdx),prodCXItr)
 
-      self._relVelProdCXCalc(self.xc:data(), m0Itr:data(), uItr:data(), vtSqItr:data(), fOtherItr:data(), prodCXItr:data())
+      self._calcRelVelProdCX(self.xc:data(), m0Itr:data(), uItr:data(), vtSqItr:data(), fOtherItr:data(), prodCXItr:data())
      
    end
    self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
 end
 
-function relVelProdCX:evalMomTime() return self._tmEvalMom end
+function RelVelProdCX:evalMomTime() return self._tmEvalMom end
 
-return relVelProdCX
+return RelVelProdCX

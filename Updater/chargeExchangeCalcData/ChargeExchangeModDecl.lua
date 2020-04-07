@@ -6,7 +6,7 @@
 --------------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local _ = require "Updater.ChargeExchangeCalcData._ChargeExchangeCdef"
+local _ = require "Updater.chargeExchangeCalcData._ChargeExchangeCdef"
 
 -- Map of basis function name -> function encoding.
 local basisNmMap = { ["serendipity"] = "Ser", ["maximal-order"] = "Max" }

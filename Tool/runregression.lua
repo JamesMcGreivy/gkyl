@@ -30,6 +30,9 @@ local date = require "xsys.date"
 local lume = require "Lib.lume"
 local sql = require "sqlite3"
 
+-- need to change this as it is keyed on input file name
+GKYL_OUT_PREFIX = lfs.currentdir() .. "/" .. "runregression"
+
 local log = Logger { logToFile = true }
 local verboseLog = function (msg) end -- default no messages are written
 local verboseLogger = function (msg) log(msg) end
@@ -445,9 +448,9 @@ end
 -- "coarse" but a direct comparison of floats is very tricky.
 local function check_equal_numeric(expected, actual, maxVal)
    if maxVal < GKYL_MIN_DOUBLE then
-      return math.max(expected-actual) > 10*GKYL_MIN_DOUBLE
+      return math.abs(expected-actual) > 10*GKYL_MIN_DOUBLE
    end
-   if math.max(expected-actual)/maxVal > 1e-12 then
+   if math.abs(expected-actual)/maxVal > 1e-12 then
       return false
    end
    return true
@@ -456,8 +459,8 @@ end
 -- relative difference between two numbers (NOT SURE IF THIS IS BEST
 -- WAY TO DO THINGS)
 local function get_relative_numeric(expected, actual, maxVal)
-   if maxVal < 1e-15 then
-      return math.max(expected-actual)
+   if maxVal < GKYL_MIN_DOUBLE then
+      return math.abs(expected-actual)
    else
       return math.abs(expected-actual)/maxVal
    end
@@ -503,21 +506,28 @@ local function compareFiles(f1, f2)
 	    cmpPass = false
 	 end
       end
-   elseif r1:hasVar("TimeMesh") and r2:hasVar("TimeMesh") then
-      -- Compare DynVector
-      local d1, d2 = r1:getVar("Data"):read(), r2:getVar("Data"):read()
-      if d1:size() ~= d2:size() then
-	 verboseLog(string.format(
-		       " ... DynVector in files %s and %s not the same size!\n", f1, f2))
-	 return false
-      end
-
-      local maxVal = maxValueInField(d1) -- maximum value (for numeric comparison)
-      for i = 1, d1:size() do
-	 if check_equal_numeric(d1[i], d2[i], maxVal) == false then
-	    currMaxDiff = math.max(currMaxDiff, get_relative_numeric(d1[i], d2[i], maxVal))
-	    cmpPass = false
+   elseif r1:hasVar("TimeMesh0") and r2:hasVar("TimeMesh0") then
+      -- Compare DynVector: there may be more than one set of data in
+      -- the BP file
+      local frNum = 0
+      while true do
+	 local tNm, dNm = string.format("TimeMesh%d", frNum), string.format("Data%d", frNum)
+	 if not r1:hasVar(tNm) then break end
+	 local d1, d2 = r1:getVar(dNm):read(), r2:getVar(dNm):read()
+	 if d1:size() ~= d2:size() then
+	    verboseLog(string.format(
+			  " ... DynVector in files %s and %s not the same size!\n", f1, f2))
+	    return false
 	 end
+	 
+	 local maxVal = math.max(maxValueInField(d1),maxValueInField(d2)) -- maximum value (for numeric comparison)
+	 for i = 1, d1:size() do
+	    if check_equal_numeric(d1[i], d2[i], maxVal) == false then
+	       currMaxDiff = math.max(currMaxDiff, get_relative_numeric(d1[i], d2[i], maxVal))
+	       cmpPass = false
+	    end
+	 end
+	 frNum = frNum+1
       end
    end
 

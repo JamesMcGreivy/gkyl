@@ -40,6 +40,9 @@ local statusToString = { [-2] = "create", [-1] = "skip", [0] = "fail", [1] = "pa
 -- Name of configuration file
 local confFile = os.getenv("HOME") .. "/runregression.config.lua"
 
+-- need to change this as it is keyed on input file name
+GKYL_OUT_PREFIX = lfs.currentdir() .. "/" .. "queryrdb"
+
 local log = Logger { logToFile = true }
 local verboseLog = function (msg) end -- default no messages are written
 local verboseLogger = function (msg) log(msg) end
@@ -190,21 +193,39 @@ local function history_action(args, name)
       return nm
    end
 
-   local tNm = trimname(args.regression)
-   local dat, nrow = sqlConn:exec(
-      string.format("select * from RegressionData where name=='%s'", tNm)
-   )
-
-   local fmt = "%-20s %-30s %-7s %-4s"
-   print(string.format(fmt, "Time-Stamp", "Changeset", "Status", "Run-Time"))
-   local fmt1 = "%-20s %-30s %-7s %.4g"
-   for i = 1,nrow do
-      local guid = dat['guid'][i]
-      local tstamp, changeset = sqlConn:rowexec(
-	 string.format("select tstamp, GKYL_HG_CHANGESET from RegressionMeta where guid='%s'", guid)
+   if args.time_only then
+      local tNm = trimname(args.regression)
+      local dat, nrow = sqlConn:exec(
+	 string.format("select * from RegressionData where name=='%s' and status==1", tNm)
       )
-      local stat = statusToString[tonumber(dat['status'][i])]
-      print(string.format(fmt1, tstamp, changeset, stat, dat['runtime'][i]))
+      
+      local fmt = "## %-20s %-4s"
+      print(string.format(fmt, "Time-Stamp", "Run-Time"))
+      local fmt1 = "%.4g"
+      for i = 1,nrow do
+	 local guid = dat['guid'][i]
+	 local tstamp, changeset = sqlConn:rowexec(
+	    string.format("select tstamp, GKYL_HG_CHANGESET from RegressionMeta where guid='%s'", guid)
+	 )
+	 print(string.format(fmt1, dat['runtime'][i]))
+      end      
+   else
+      local tNm = trimname(args.regression)
+      local dat, nrow = sqlConn:exec(
+	 string.format("select * from RegressionData where name=='%s'", tNm)
+      )
+      
+      local fmt = "%-20s %-30s %-7s %-4s"
+      print(string.format(fmt, "Time-Stamp", "Changeset", "Status", "Run-Time"))
+      local fmt1 = "%-20s %-30s %-7s %.4g"
+      for i = 1,nrow do
+	 local guid = dat['guid'][i]
+	 local tstamp, changeset = sqlConn:rowexec(
+	    string.format("select tstamp, GKYL_HG_CHANGESET from RegressionMeta where guid='%s'", guid)
+	 )
+	 local stat = statusToString[tonumber(dat['status'][i])]
+	 print(string.format(fmt1, tstamp, changeset, stat, dat['runtime'][i]))
+      end
    end
    
 end
@@ -240,6 +261,7 @@ c_delete:option("-i --id", "Regression run with this ID will be deleted", 0)
 local c_history = parser:command("history", "Query historical data for a specific test")
    :action(history_action)
 c_history:option("-r --regression", "Print history for specific test")
+c_history:flag("--time-only ", "Print run time only (for when test passed)", false)
 
 -- parse command-line args (functionality encoded in command actions)
 local _ = parser:parse(GKYL_COMMANDS)

@@ -378,6 +378,10 @@ function KineticSpecies:allocDistf()
 	onGrid        = self.grid,
 	numComponents = self.basis:numBasis(),
 	ghost         = {1, 1},
+        metaData = {
+           polyOrder = self.basis:polyOrder(),
+           basisType = self.basis:id()
+        },
    }
    f:clear(0.0)
    return f
@@ -387,6 +391,10 @@ function KineticSpecies:allocMoment()
 	onGrid        = self.confGrid,
 	numComponents = self.confBasis:numBasis(),
 	ghost         = {1, 1},
+        metaData = {
+           polyOrder = self.basis:polyOrder(),
+           basisType = self.basis:id()
+        },
    }
    m:clear(0.0)
    return m
@@ -396,6 +404,10 @@ function KineticSpecies:allocVectorMoment(dim)
 	onGrid        = self.confGrid,
 	numComponents = self.confBasis:numBasis()*dim,
 	ghost         = {1, 1},
+        metaData = {
+           polyOrder = self.basis:polyOrder(),
+           basisType = self.basis:id()
+        },
    }
    m:clear(0.0)
    return m
@@ -564,6 +576,7 @@ function KineticSpecies:initDist()
       if pr.isInit then
 	 self.distf[1]:accumulate(1.0, self.distf[2])
 	 initCnt = initCnt + 1
+         if pr.scaleWithSourcePower then self.scaleInitWithSourcePower = true end
       end
       if pr.isBackground then
 	 if not self.f0 then 
@@ -581,6 +594,20 @@ function KineticSpecies:initDist()
          if self.positivityRescale then
             self.posRescaler:advance(0.0, {self.fSource}, {self.fSource}, false)
          end
+         if pr.power then
+            local calcInt = Updater.CartFieldIntegratedQuantCalc {
+               onGrid        = self.confGrid,
+               basis         = self.confBasis,
+               numComponents = 1,
+               quantity      = "V",
+            }
+            local intKE = DataStruct.DynVector{numComponents = 1}
+            self.ptclEnergyCalc:advance(0.0, {self.fSource}, {self.ptclEnergyAux})
+            calcInt:advance(0.0, {self.ptclEnergyAux, self.mass/2}, {intKE})
+            local _, intKE_data = intKE:lastData()
+            self.powerScalingFac = pr.power/intKE_data[1]
+            self.fSource:scale(self.powerScalingFac)
+         end
       end
       if pr.isReservoir then
 	 if not self.fReservoir then 
@@ -589,6 +616,7 @@ function KineticSpecies:initDist()
 	 self.fReservoir:accumulate(1.0, self.distf[2])
       end
    end
+   if self.scaleInitWithSourcePower then self.distf[1]:scale(self.powerScalingFac) end
    assert(initCnt > 0,
 	  string.format("KineticSpecies: Species '%s' not initialized!", self.name))
    if self.f0 and backgroundCnt == 0 then 
@@ -812,7 +840,7 @@ function KineticSpecies:calcAndWriteDiagnosticMoments(tm)
     -- Write integrated moments.
     for i, mom in ipairs(self.diagnosticIntegratedMoments) do
        self.diagnosticIntegratedMomentFields[mom]:write(
-          string.format("%s_%s_%d.bp", self.name, mom, self.diagIoFrame), tm, self.diagIoFrame)
+          string.format("%s_%s.bp", self.name, mom), tm, self.diagIoFrame)
     end
 end
 
@@ -847,6 +875,9 @@ function KineticSpecies:write(tm, force)
          end
          if tm == 0.0 and self.fSource then
             self.distIo:write(self.fSource, string.format("%s_fSource_0.bp", self.name), tm, self.distIoFrame)
+            if self.numDensitySrc then self.numDensitySrc:write(string.format("%s_srcM0_0.bp", self.name), tm, self.distIoFrame) end
+            if self.momDensitySrc then self.momDensitySrc:write(string.format("%s_srcM1_0.bp", self.name), tm, self.distIoFrame) end
+            if self.ptclEnergySrc then self.ptclEnergySrc:write(string.format("%s_srcM2_0.bp", self.name), tm, self.distIoFrame) end
          end
 	 self.distIoFrame = self.distIoFrame+1
       end
@@ -893,10 +924,10 @@ function KineticSpecies:writeRestart(tm)
 	 string.format("%s_%s_restart.bp", self.name, mom), tm, self.diagIoFrame, false)
    end   
 
-   -- (The final "false" prevents flushing of data after write).
    for i, mom in ipairs(self.diagnosticIntegratedMoments) do
+      -- (the first "false" prevents flushing of data after write, the second "false" prevents appending)
       self.diagnosticIntegratedMomentFields[mom]:write(
-         string.format("%s_%s_restart.bp", self.name, mom), tm, self.diagIoFrame, false)
+         string.format("%s_%s_restart.bp", self.name, mom), tm, self.diagIoFrame, false, false)
    end
 end
 
@@ -904,8 +935,7 @@ function KineticSpecies:readRestart()
    local readSkin = false
    if self.hasSheathBcs or self.fluctuationBCs then readSkin = true end
    local tm, fr = self.distIo:read(self.distf[1], string.format("%s_restart.bp", self.name), readSkin)
-
-   self.distIo:write(self.distf[1], string.format("%s_restarted.bp", self.name), tm, self.distIoFrame, false)
+   self.distIoFrame = fr -- Reset internal frame counter.
 
    -- set ghost cells
    self.distf[1]:sync()
@@ -915,7 +945,6 @@ function KineticSpecies:readRestart()
       self:applyBc(tm, self.distf[1]) 
    end 
    
-   self.distIoFrame = fr -- Reset internal frame counter.
    for i, mom in ipairs(self.diagnosticIntegratedMoments) do
       local _, dfr = self.diagnosticIntegratedMomentFields[mom]:read(
          string.format("%s_%s_restart.bp", self.name, mom))

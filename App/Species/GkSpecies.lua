@@ -14,6 +14,7 @@ local Updater        = require "Updater"
 local DataStruct     = require "DataStruct"
 local Time           = require "Lib.Time"
 local Constants      = require "Lib.Constants"
+local Lin            = require "Lib.Linalg"
 
 local GkSpecies = Proto(KineticSpecies)
 
@@ -249,28 +250,28 @@ function GkSpecies:createSolver(hasPhi, hasApar, funcField)
       onGrid     = self.grid,
       phaseBasis = self.basis,
       confBasis  = self.confBasis,
-      moment     = "GkM0",
+      moment     = "GkM0", -- GkM0 = < f >
       gkfacs     = {self.mass, self.bmag},
    }
    self.momDensityCalc = Updater.DistFuncMomentCalc {
       onGrid     = self.grid,
       phaseBasis = self.basis,
       confBasis  = self.confBasis,
-      moment     = "GkM1",
+      moment     = "GkM1", -- GkM1 = < v_parallel f > 
       gkfacs     = {self.mass, self.bmag},
    }
    self.momProjDensityCalc = Updater.DistFuncMomentCalc {
       onGrid     = self.grid,
       phaseBasis = self.basis,
       confBasis  = self.confBasis,
-      moment     = "GkM1proj",
+      moment     = "GkM1proj", -- GkM1proj = < cellavg(v_parallel) f >
       gkfacs     = {self.mass, self.bmag},
    }
    self.ptclEnergyCalc = Updater.DistFuncMomentCalc {
       onGrid     = self.grid,
       phaseBasis = self.basis,
       confBasis  = self.confBasis,
-      moment     = "GkM2",
+      moment     = "GkM2", -- GkM2 = < (v_parallel^2 + 2*mu*B/m) f >
       gkfacs     = {self.mass, self.bmag},
    }
    self.M2parCalc = Updater.DistFuncMomentCalc {
@@ -718,6 +719,7 @@ function GkSpecies:advance(tCurr, species, emIn, inIdx, outIdx)
       fIn = self.fPos
    end
 
+   -- clear RHS, because HyperDisCont set up with clearOut = false
    fRhsOut:clear(0.0)
 
    -- Do collisions first so that collisions contribution to cflRate is included in GK positivity.
@@ -779,8 +781,19 @@ function GkSpecies:advanceStep3(tCurr, species, emIn, inIdx, outIdx)
 end
 
 function GkSpecies:createDiagnostics()
+   local function contains(table, element)
+     for _, value in pairs(table) do
+       if value == element then
+         return true
+       end
+     end
+     return false
+   end
+
+
    local function isIntegratedMomentNameGood(nm)
-      if nm == "intM0" or nm == "intM1" or nm == "intM2" or nm == "intL1" or nm == "intL2"
+      if nm == "intM0" or nm == "intM1" or nm == "intM2" or nm == "intKE" or nm == "intL1" or nm == "intL2"
+      or nm == "intSrcM0" or nm == "intSrcM1" or nm == "intSrcM2" or nm == "intSrcKE"
       or nm == "intDelM0" or nm == "intDelM2" or nm == "intDelL2"
       or nm == "intDelPosM0" or nm == "intDelPosM2" or nm == "intDelPosL2" then
          return true
@@ -789,13 +802,37 @@ function GkSpecies:createDiagnostics()
    end
    self.diagnosticIntegratedMomentFields   = { }
    self.diagnosticIntegratedMomentUpdaters = { } 
+   if self.fSource then
+      self.numDensitySrc = self:allocMoment()
+      self.momDensitySrc = self:allocMoment()
+      self.ptclEnergySrc = self:allocMoment()
+      self.threeMomentsCalc:advance(0.0, {self.fSource}, {self.numDensitySrc, self.momDensitySrc, self.ptclEnergySrc})
+      if contains(self.diagnosticIntegratedMoments, "intM0") and not contains(self.diagnosticIntegratedMoments, "intSrcM0") then
+        table.insert(self.diagnosticIntegratedMoments, "intSrcM0")
+      end
+      if contains(self.diagnosticIntegratedMoments, "intM1") and not contains(self.diagnosticIntegratedMoments, "intSrcM1") then
+         table.insert(self.diagnosticIntegratedMoments, "intSrcM1")
+      end
+      if contains(self.diagnosticIntegratedMoments, "intM2") and not contains(self.diagnosticIntegratedMoments, "intSrcM2") then
+         table.insert(self.diagnosticIntegratedMoments, "intSrcM2")
+      end
+      if contains(self.diagnosticIntegratedMoments, "intKE") and not contains(self.diagnosticIntegratedMoments, "intSrcKE") then
+         table.insert(self.diagnosticIntegratedMoments, "intSrcKE")
+      end
+   end
    -- Allocate space to store integrated moments and create integrated moment updaters.
    for i, mom in pairs(self.diagnosticIntegratedMoments) do
       if isIntegratedMomentNameGood(mom) then
          self.diagnosticIntegratedMomentFields[mom] = DataStruct.DynVector {
             numComponents = 1,
          }
-         if mom == "intL2" or "intDelL2" or "intDelPosL2" then
+         local intCalc = Updater.CartFieldIntegratedQuantCalc {
+               onGrid        = self.confGrid,
+               basis         = self.confBasis,
+               numComponents = 1,
+               quantity      = "V",
+            }
+         if mom == "intL2" or mom == "intDelL2" or mom == "intDelPosL2" then
             self.diagnosticIntegratedMomentUpdaters[mom] = Updater.CartFieldIntegratedQuantCalc {
                onGrid        = self.grid,
                basis         = self.basis,
@@ -809,13 +846,16 @@ function GkSpecies:createDiagnostics()
                numComponents = 1,
                quantity      = "AbsV"
             }
-         else
+         elseif mom == "intSrcM0" or mom == "intSrcM1" or mom == "intSrcM2" or mom == "intSrcKE" then
             self.diagnosticIntegratedMomentUpdaters[mom] = Updater.CartFieldIntegratedQuantCalc {
                onGrid        = self.confGrid,
                basis         = self.confBasis,
                numComponents = 1,
-               quantity      = "V"
+               quantity      = "V",
+               timeIntegrate = true,
             }
+         else
+            self.diagnosticIntegratedMomentUpdaters[mom] = intCalc
          end
       else
          assert(false, string.format("Integrated moment %s not valid", mom))
@@ -831,14 +871,6 @@ function GkSpecies:createDiagnostics()
    end
    local function isAuxMomentNameGood(nm)
       return nm == "GkBeta" or nm == "GkUparCross" or nm == "GkVtSqCross"
-   end
-   local function contains(table, element)
-     for _, value in pairs(table) do
-       if value == element then
-         return true
-       end
-     end
-     return false
    end
 
    self.diagnosticMomentFields   = { }
@@ -859,7 +891,6 @@ function GkSpecies:createDiagnostics()
       weakBasis  = self.confBasis,
       operation  = "Divide",
       onGhosts   = true,
-      positivity = self.positivity,
    }
    -- Sort moments into diagnosticMoments, diagnosticWeakMoments, and diagnosticAuxMoments.
    for i, mom in pairs(self.diagnosticMoments) do
@@ -1041,6 +1072,9 @@ function GkSpecies:calcDiagnosticIntegratedMoments(tCurr)
       elseif mom == "intM2" then
          self.diagnosticIntegratedMomentUpdaters[mom]:advance(
             tCurr, {self.ptclEnergy}, {self.diagnosticIntegratedMomentFields[mom]})
+      elseif mom == "intKE" then
+         self.diagnosticIntegratedMomentUpdaters[mom]:advance(
+            tCurr, {self.ptclEnergy, self.mass/2}, {self.diagnosticIntegratedMomentFields[mom]})
       elseif mom == "intL1" then
          self.diagnosticIntegratedMomentUpdaters[mom]:advance(
             tCurr, {self.distf[1]}, {self.diagnosticIntegratedMomentFields[mom]})
@@ -1065,9 +1099,20 @@ function GkSpecies:calcDiagnosticIntegratedMoments(tCurr)
       elseif mom == "intDelPosM2" and self.positivity then
          self.diagnosticIntegratedMomentUpdaters[mom]:advance(
             tCurr, {self.ptclEnergyPos}, {self.diagnosticIntegratedMomentFields[mom]})
+      elseif mom == "intSrcM0" then
+         self.diagnosticIntegratedMomentUpdaters[mom]:advance(
+               tCurr, {self.numDensitySrc, self.sourceTimeDependence(tCurr)}, {self.diagnosticIntegratedMomentFields[mom]})
+      elseif mom == "intSrcM1" then
+         self.diagnosticIntegratedMomentUpdaters[mom]:advance(
+               tCurr, {self.momDensitySrc, self.sourceTimeDependence(tCurr)}, {self.diagnosticIntegratedMomentFields[mom]})
+      elseif mom == "intSrcM2" then
+         self.diagnosticIntegratedMomentUpdaters[mom]:advance(
+               tCurr, {self.ptclEnergySrc, self.sourceTimeDependence(tCurr)}, {self.diagnosticIntegratedMomentFields[mom]})
+      elseif mom == "intSrcKE" then
+         self.diagnosticIntegratedMomentUpdaters[mom]:advance(
+               tCurr, {self.ptclEnergySrc, self.sourceTimeDependence(tCurr)*self.mass/2}, {self.diagnosticIntegratedMomentFields[mom]})
       end
    end
-
 end
 
 function GkSpecies:calcDiagnosticWeakMoments()
@@ -1168,16 +1213,14 @@ function GkSpecies:bcSheathFunc(dir, tm, idxIn, fIn, fOut)
    end
    local w = gridIn:cellCenterInDir(vpardir)
    local dv = gridIn:dx(vpardir)
-   local fhat = self.fhatSheathPtr -- distribution function to be reflected
-   self.fhatSheath:fill(self.fhatSheathIdxr(idxIn), fhat)
    -- calculate reflected distribution function fhat
    -- note: reflected distribution can be 
    -- 1) fhat=0 (no reflection, i.e. absorb), 
    -- 2) fhat=f (full reflection)
    -- 3) fhat=c*f (partial reflection)
-   self.gkEqn:calcSheathReflection(w, dv, vlowerSq, vupperSq, edgeVal, self.charge, self.mass, idxIn, fIn, fhat)
+   self.gkEqn:calcSheathReflection(w, dv, vlowerSq, vupperSq, edgeVal, self.charge, self.mass, idxIn, fIn, self.fhatSheath)
    -- reflect fhat into skin cells
-   self:bcReflectFunc(dir, tm, nil, fhat, fOut) 
+   self:bcReflectFunc(dir, tm, nil, self.fhatSheath, fOut) 
 end
 
 function GkSpecies:appendBoundaryConditions(dir, edge, bcType)
@@ -1202,9 +1245,7 @@ function GkSpecies:appendBoundaryConditions(dir, edge, bcType)
    elseif bcType == SP_BC_REFLECT and dir==self.cdim then
       table.insert(self.boundaryConditions, self:makeBcUpdater(dir, vdir, edge, { bcReflectFunc }, "flip"))
    elseif bcType == SP_BC_SHEATH and dir==self.cdim then
-      self.fhatSheath = self:allocDistf()
-      self.fhatSheathPtr = self.fhatSheath:get(1)
-      self.fhatSheathIdxr = self.fhatSheath:genIndexer()
+      self.fhatSheath = Lin.Vec(self.basis:numBasis())
       table.insert(self.boundaryConditions, self:makeBcUpdater(dir, vdir, edge, { bcSheathFunc }, "flip"))
       self.hasSheathBcs = true
    elseif bcType == SP_BC_ZEROFLUX then
@@ -1405,7 +1446,9 @@ end
 
 function GkSpecies:getPolarizationWeight(linearized)
    if linearized == false then 
-     self.polarizationWeight:combine(self.mass/self.B0^2, self.numDensity)
+     self.weakMultiplication:advance(0.0, {self.numDensity, self.bmagInv}, {self.polarizationWeight})
+     self.weakMultiplication:advance(0.0, {self.polarizationWeight, self.bmagInv}, {self.polarizationWeight})
+     self.polarizationWeight:scale(self.mass)
      return self.polarizationWeight
    else 
      return self.n0*self.mass/self.B0^2

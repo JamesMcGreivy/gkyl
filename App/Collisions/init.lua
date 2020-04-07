@@ -20,7 +20,7 @@ return {
   CollisionsBase   = CollisionsBase,
   FluidDiffusion   = FluidDiffusion,
   GkBGKCollisions  = GkBGKCollisions,
-  GkChargeExchange = GkChargeExchange
+  GkChargeExchange = GkChargeExchange,
   GkLBOCollisions  = GkLBOCollisions,
   GkIonization     = GkIonization,
   VmBGKCollisions  = VmBGKCollisions,

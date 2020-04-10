@@ -127,7 +127,7 @@ calcVoronovReactRateCellAv(fh, funcNm, cdim, basisFun, pMax) := block([],
     writeCExprsCs(coefIz, coefIz_c),
     printf(fh, " ~%"),
     
-    printf(fh, "  if (U > 1.0) { ~%"),
+    printf(fh, "  if (U > 3.0/2.0) { ~%"),
     printf(fh, "    coefIz[0] = 0.0;~%"),
     printf(fh, "  }~%"),
 

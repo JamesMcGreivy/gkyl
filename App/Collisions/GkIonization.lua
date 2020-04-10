@@ -65,6 +65,14 @@ function GkIonization:fullInit(speciesTbl)
       self._X = 0.232
    end
 
+   if self.plasma == "Ar" then
+      self._E = 15.8
+      self._P = 1
+      self._A = 0.599e-7
+      self._K = 0.26
+      self._X = 0.136
+   end
+
    self._tmEvalMom = 0.0 
 end
 

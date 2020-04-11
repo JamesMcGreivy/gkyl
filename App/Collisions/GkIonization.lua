@@ -176,13 +176,6 @@ function GkIonization:createSolver(funcField)
       numComponents = self.phaseBasis:numBasis(),
       ghost         = {1, 1},
    }
-   -- For testing and debugging purposes
-   self.numDensityCalc = Updater.DistFuncMomentCalc {
-      onGrid     = self.phaseGrid,
-      phaseBasis = self.phaseBasis,
-      confBasis  = self.confBasis,
-      moment     = "M0",
-   }
    self.sumDistFM0  = DataStruct.Field {
       onGrid        = self.confGrid,
       numComponents = self.confBasis:numBasis(),
@@ -207,8 +200,7 @@ function GkIonization:advance(tCurr, fIn, species, fRhsOut)
       self.m0elc:copy(elcM0)
       self.maxwellIz:advance(tCurr, {self.m0elc, neutU, vtSqIz}, {self.fMaxwellIz})
       self.sumDistF:combine(2.0,self.fMaxwellIz,-1.0,elcDistF)
-      self.numDensityCalc:advance(tCurr, {self.sumDistF}, {self.sumDistFM0})
-
+ 
       self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
       
       self.confMult:advance(tCurr, {coefIz, neutM0}, {self.coefM0})

@@ -205,6 +205,7 @@ function GkIonization:advance(tCurr, fIn, species, fRhsOut)
       
       self.confMult:advance(tCurr, {coefIz, neutM0}, {self.coefM0})
       self.collisionSlvr:advance(tCurr, {self.coefM0, self.sumDistF}, {self.ionizSrc})
+      self.ionizSrc:write(string.format("electron_izSrc_%d.bp",tCurr*10e7),0.0,0,false)
        
       fRhsOut:accumulate(1.0,self.ionizSrc)
    elseif (species[self.speciesName].charge == 0) then

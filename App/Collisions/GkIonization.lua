@@ -205,16 +205,14 @@ function GkIonization:advance(tCurr, fIn, species, fRhsOut)
       
       self.confMult:advance(tCurr, {coefIz, neutM0}, {self.coefM0})
       self.collisionSlvr:advance(tCurr, {self.coefM0, self.sumDistF}, {self.ionizSrc})
-      self.ionizSrc:write(string.format("electron_izSrc_%d.bp",tCurr*10e7),0.0,0,false)
-       
+      species[self.elcNm].distIo:write(self.ionizSrc, string.format("electron_ionizSrc_%d.bp",species[self.elcNm].distIoFrame), 0,0)
+      
       fRhsOut:accumulate(1.0,self.ionizSrc)
    elseif (species[self.speciesName].charge == 0) then
       -- neutrals
       tmEvalMomStart = Time.clock()
       self.m0elc:copy(elcM0)
-      --self.m0elc:write(string.format("m0eInNeut_%d.bp",tCurr*1e9),0,0,false)
       self.neutDistF:copy(distFn)
-      --self.neutDistF:write(string.format("FnInNeut_%d.bp",tCurr*1e9),0,0,false)
       
       self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
       
@@ -225,9 +223,7 @@ function GkIonization:advance(tCurr, fIn, species, fRhsOut)
       -- ions 
       tmEvalMomStart = Time.clock()
       self.m0elc:copy(elcM0)
-      --self.m0elc:write(string.format("m0eInIon_%d.bp",tCurr*1e9),0,0,false)
       self.neutDistF:copy(distFn)
-      --self.neutDistF:write(string.format("FnInIon_%d.bp",tCurr*1e9),0,0,false)
       
       self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
 

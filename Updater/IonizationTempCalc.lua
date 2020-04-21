@@ -44,7 +44,7 @@ function IonizationTemp:init(tbl)
    -- Define ionization temperature calculation
    self._IonizationTempCalc = IonizationDecl.ionizationTemp(self._basisID, self._cDim, self._polyOrder)
 
-   self.onGhosts = xsys.pickBool(false, tbl.onGhosts)
+   self.onGhosts = xsys.pickBool(true, tbl.onGhosts)
 
    self._tmEvalMom = 0.0
 end

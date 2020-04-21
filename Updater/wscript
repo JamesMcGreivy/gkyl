@@ -320,6 +320,7 @@ def build(bld):
     MappedPoissonImpl.cpp
 
     MaxwellianOnBasisImpl.cpp
+    GkMaxwellianOnBasisImpl.cpp
 
     PositivityRescaleImpl.cpp
 

@@ -102,7 +102,7 @@ function GkIonization:setPhaseGrid(grid)
    self.phaseGrid = grid
 end
 
-function GkIonization:createSolver(funcField)
+function GkIonization:createSolver(funcField, species)
    if (self.speciesName == self.elcNm) then
       self.calcVoronovReactRate = Updater.VoronovReactRateCoef {
 	 onGrid     = self.confGrid,
@@ -124,19 +124,30 @@ function GkIonization:createSolver(funcField)
 	 elemCharge = self.charge,
       	 E          = self._E,
       }
-      -- fields for elc ionization maxwellian
-      self.maxwellIz = Updater.MaxwellianOnBasis {
-	 onGrid     = self.phaseGrid,
-	 confGrid   = self.confGrid,
-	 confBasis  = self.confBasis,
-	 phaseGrid  = self.phaseGrid,
-	 phaseBasis = self.phaseBasis,
-      }
-      self.fMaxwellIz  = DataStruct.Field {
-	 onGrid        = self.phaseGrid,
-	 numComponents = self.phaseBasis:numBasis(),
-	 ghost         = {1, 1},
-      }
+      -- -- fields for elc ionization maxwellian
+      -- self.maxwellIz = Updater.GkMaxwellianOnBasis {
+      -- 	 onGrid     = self.phaseGrid,
+      -- 	 confGrid   = self.confGrid,
+      -- 	 confBasis  = self.confBasis,
+      -- 	 phaseGrid  = self.phaseGrid,
+      -- 	 phaseBasis = self.phaseBasis,
+      -- 	 gkfacs     = {self.mass, species[self.elcNm].bmag},
+      -- }
+      -- self.fMaxwellIz  = DataStruct.Field {
+      -- 	 onGrid        = self.phaseGrid,
+      -- 	 numComponents = self.phaseBasis:numBasis(),
+      -- 	 ghost         = {1, 1},
+      -- }
+      -- self.m0fMax = DataStruct.Field {
+      -- 	 onGrid        = self.confGrid,
+      -- 	 numComponents = self.confBasis:numBasis(),
+      -- 	 ghost         = {1, 1},
+      -- }
+      -- self.m0mod = DataStruct.Field {
+      -- 	 onGrid        = self.confGrid,
+      -- 	 numComponents = self.confBasis:numBasis(),
+      -- 	 ghost         = {1, 1},
+      -- }
       self.sumDistF    = DataStruct.Field {
 	 onGrid        = self.phaseGrid,
 	 numComponents = self.phaseBasis:numBasis(),
@@ -149,6 +160,11 @@ function GkIonization:createSolver(funcField)
          onGrid     = self.confGrid,
          weakBasis  = self.confBasis,
          operation  = "Multiply",
+   }
+   self.confDiv = Updater.CartFieldBinOp {
+      onGrid     = self.confGrid,
+      weakBasis  = self.confBasis,
+      operation = "Divide",
    }
    self.collisionSlvr = Updater.CartFieldBinOp {
          onGrid     = self.phaseGrid,
@@ -195,17 +211,29 @@ function GkIonization:advance(tCurr, fIn, species, fRhsOut)
       local neutM0   = species[self.neutNm]:fluidMoments()[1]
       local neutU    = species[self.neutNm]:selfPrimitiveMoments()[1]
       local elcDistF = species[self.speciesName]:getDistF()
-      local vtSqIz   = species[self.elcNm]:getIonizationVtSq()
-
-      self.m0elc:copy(elcM0)
-      self.maxwellIz:advance(tCurr, {self.m0elc, neutU, vtSqIz}, {self.fMaxwellIz})
-      self.sumDistF:combine(2.0,self.fMaxwellIz,-1.0,elcDistF)
+      -- local vtSqIz   = species[self.elcNm]:getIonizationVtSq()
+      local fMaxwellIz = species[self.elcNm]:getFMaxwellIz()
+      species[self.elcNm].distIo:write(coefIz, string.format("coefIz_%d.bp",species[self.elcNm].distIoFrame), 0,0)
+      species[self.elcNm].distIo:write(neutU, string.format("neutU_%d.bp",species[self.elcNm].distIoFrame), 0,0, true)
+      
+      -- self.m0elc:copy(elcM0)
+      -- self.maxwellIz:advance(tCurr, {self.m0elc, neutU, vtSqIz}, {self.fMaxwellIz})
+      -- -- Scale Maxwellian to give desired numDensity
+      -- species[self.elcNm].numDensityCalc:advance(tCurr, {self.fMaxwellIz}, {self.m0fMax})
+      -- self.confDiv:advance(0.0, {self.m0fMax, self.m0elc}, {self.m0mod})
+      -- self.collisionSlvr:advance(tCurr, {m0mod, self.fMaxwellIz}, {self.fMaxwellIz})
+      species[self.elcNm].distIo:write(fMaxwellIz, string.format("electron_fMaxwellIz_%d.bp",species[self.elcNm].distIoFrame),0,0)
+      
+      self.sumDistF:combine(2.0,fMaxwellIz,-1.0,elcDistF)
+      species[self.elcNm].distIo:write(self.sumDistF, string.format("electron_sumDistF_%d.bp",species[self.elcNm].distIoFrame),0,0,true)
  
       self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
       
       self.confMult:advance(tCurr, {coefIz, neutM0}, {self.coefM0})
       self.collisionSlvr:advance(tCurr, {self.coefM0, self.sumDistF}, {self.ionizSrc})
-      species[self.elcNm].distIo:write(self.ionizSrc, string.format("electron_ionizSrc_%d.bp",species[self.elcNm].distIoFrame), 0,0)
+      -- Uncomment to test without fMaxwellian(Tiz)
+      -- self.collisionSlvr:advance(tCurr, {self.coefM0, elcDistF}, {self.ionizSrc})      
+      species[self.elcNm].distIo:write(self.ionizSrc, string.format("electron_ionizSrc_%d.bp",species[self.elcNm].distIoFrame),0,0)
       
       fRhsOut:accumulate(1.0,self.ionizSrc)
    elseif (species[self.speciesName].charge == 0) then

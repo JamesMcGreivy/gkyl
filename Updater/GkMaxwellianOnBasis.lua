@@ -54,6 +54,7 @@ function GkMaxwellianOnBasis:init(tbl)
 		      "Updater.GkMaxwellianOnBasis: Must provide mass object in 'gkfacs'")
    self.bmag = assert(tbl.gkfacs[2],
 		      "Updater.GkMaxwellianOnBasis: Must provide bmag object in 'gkfacs'")
+   self.bmagItr = self.bmag:get(1)
 
    -- Number of quadrature points in each direction
    local N = tbl.numConfQuad and tbl.numConfQuad or self.confBasis:polyOrder() + 1
@@ -137,30 +138,28 @@ function GkMaxwellianOnBasis:_advance(tCurr, inFld, outFld)
 
    local pDim, cDim, vDim = self._pDim, self._cDim, self._vDim
 
+   -- OLD CODE before projecting on ghosts --
    -- Move these declarations below self.onGhosts 
    -- local bmagItr, bmagOrd = self.bmag:get(1), Lin.Vec(self.numConfOrds)
    -- local nItr, nOrd       = nIn:get(1), Lin.Vec(self.numConfOrds)
    -- local uParItr, uParOrd = uParIn:get(1), Lin.Vec(self.numConfOrds)
    -- local vtSqItr, vtSqOrd = vtSqIn:get(1), Lin.Vec(self.numConfOrds)
    -- local fItr             = fOut:get(1)
-
-   -- OLD CODE --
+ 
    -- Get the Ranges to loop over the domain (always project on ghosts)
    -- local confRange    = nIn:localExtRange()
    -- local confIndexer  = nIn:genIndexer()
    -- local phaseRange   = fOut:localExtRange()
    -- local phaseIndexer = fOut:genIndexer()
-   
-   -- Additional preallocated variables
-   local ordIdx = nil
 
-   -- OLD CODE --
    -- -- construct ranges for nested loops
    -- local confRangeDecomp = LinearDecomp.LinearDecompRange {
    --    range = phaseRange:selectFirst(cDim), numSplit = self.phaseGrid:numSharedProcs() }
    --    -- range = nIn:localExtRange(), numSplit = self.phaseGrid:numSharedProcs() }
    -- local velRange = phaseRange:selectLast(vDim)
    -- local tId = self.phaseGrid:subGridSharedId() -- local thread ID
+
+   local ordIdx = nil
    local phaseRange = fOut:localRange()
    if self.onGhosts then -- extend range to config-space ghosts
       local cdirs = {}
@@ -169,7 +168,8 @@ function GkMaxwellianOnBasis:_advance(tCurr, inFld, outFld)
       end
    end
 
-   local bmagItr, bmagOrd = self.bmag:get(1), Lin.Vec(self.numConfOrds)
+   --local bmagItr, bmagOrd = self.bmag:get(1), Lin.Vec(self.numConfOrds)
+   local bmagOrd = Lin.Vec(self.numConfOrds)
    local nItr, nOrd       = nIn:get(1), Lin.Vec(self.numConfOrds)
    local uParItr, uParOrd = uParIn:get(1), Lin.Vec(self.numConfOrds)
    local vtSqItr, vtSqOrd = vtSqIn:get(1), Lin.Vec(self.numConfOrds)
@@ -186,19 +186,19 @@ function GkMaxwellianOnBasis:_advance(tCurr, inFld, outFld)
    
    -- The configuration space loop
    for cIdx in confRangeDecomp:rowMajorIter(tId) do
-      self.bmag:fill(confIndexer(cIdx), bmagItr)
+      self.bmag:fill(confIndexer(cIdx), self.bmagItr)
       nIn:fill(confIndexer(cIdx), nItr)
       uParIn:fill(confIndexer(cIdx), uParItr)
       vtSqIn:fill(confIndexer(cIdx), vtSqItr)
       
-	 -- Evaluate the the primitive variables (given as expansion
-	 -- coefficients) on the ordinates
+      -- Evaluate the the primitive variables (given as expansion
+      -- coefficients) on the ordinates
       for ordIndexes in self.confQuadRange:rowMajorIter() do
 	 ordIdx = self.confQuadIndexer(ordIndexes)
 	 bmagOrd[ordIdx],nOrd[ordIdx],uParOrd[ordIdx],vtSqOrd[ordIdx] = 0.0, 0.0, 0.0, 0.0
 	 
 	 for k = 1, self.numConfBasis do
-	    bmagOrd[ordIdx] = bmagOrd[ordIdx] + bmagItr[k]*self.confBasisAtOrds[ordIdx][k]
+	    bmagOrd[ordIdx] = bmagOrd[ordIdx] + self.bmagItr[k]*self.confBasisAtOrds[ordIdx][k]
 	    nOrd[ordIdx] = nOrd[ordIdx] + nItr[k]*self.confBasisAtOrds[ordIdx][k]
 	    uParOrd[ordIdx] = uParOrd[ordIdx] + uParItr[k]*self.confBasisAtOrds[ordIdx][k]
 	    vtSqOrd[ordIdx] = vtSqOrd[ordIdx] + vtSqItr[k]*self.confBasisAtOrds[ordIdx][k]
@@ -207,7 +207,7 @@ function GkMaxwellianOnBasis:_advance(tCurr, inFld, outFld)
 
       -- The velocity space loop
       for vIdx in velRange:rowMajorIter() do
-	 -- Construct the phase space index ot of the configuration
+	 -- Construct the phase space index out of the configuration
 	 -- space a velocity space indices
          cIdx:copyInto(self.idxP)
          for d = 1, vDim do self.idxP[cDim+d] = vIdx[d] end

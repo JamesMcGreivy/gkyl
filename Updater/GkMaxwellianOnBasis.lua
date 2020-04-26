@@ -191,7 +191,7 @@ function GkMaxwellianOnBasis:_advance(tCurr, inFld, outFld)
       uParIn:fill(confIndexer(cIdx), uParItr)
       vtSqIn:fill(confIndexer(cIdx), vtSqItr)
       
-      -- Evaluate the the primitive variables (given as expansion
+      -- Evaluate the primitive variables (given as expansion
       -- coefficients) on the ordinates
       for ordIndexes in self.confQuadRange:rowMajorIter() do
 	 ordIdx = self.confQuadIndexer(ordIndexes)

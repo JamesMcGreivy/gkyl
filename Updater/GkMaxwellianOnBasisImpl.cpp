@@ -76,8 +76,8 @@ void GkMaxwellianInnerLoop(/* Number density, drift speed, and thermal velocity 
       v = 0.5*v*dz[numConfDims] + zc[numConfDims] - uPar[confOrdIdx];
       v2 += v*v;
       mu = 0.5*mu*dz[numConfDims+1] + zc[numConfDims+1];
-
-      maxwellian *= exp((-0.5*v2-bmag[confOrdIdx]*mu/m_)/vtSq[confOrdIdx]);
+      // multiply by jacobian, the magnetic field
+      maxwellian *= bmag[confOrdIdx]*exp((-0.5*v2-bmag[confOrdIdx]*mu/m_)/vtSq[confOrdIdx]);
     
       for (int k = 0; k < numPhaseBasis; ++k) 
 	fItr[k] +=

@@ -1329,19 +1329,21 @@ function GkSpecies:calcCouplingMoments(tCurr, rkIdx, species)
 	 -- compute voronov reaction self.vornovReactRate
 	 local neutU = species[self.neutNmIz]:selfPrimitiveMoments()[1]
 	 local fElc = species[self.name]:getDistF()
+	 
 	 species[self.name].collisions[self.collNmIoniz].calcVoronovReactRate:advance(tCurr, {self.vtSqSelf}, {self.voronovReactRate})
 	 species[self.name].collisions[self.collNmIoniz].calcIonizationTemp:advance(tCurr, {self.vtSqSelf}, {self.vtSqIz})
-	 self.tempIz:copy(self.vtSqIz)
-	 self.tempIz:scale(self.mass)
-	 species[self.name].distIo:write(self.tempIz, string.format("tempIz_%d.bp",species[self.name].distIoFrame), 0,0, true)
-	 species[self.name].distIo:write(self.uParSelf, string.format("elcU_%d.bp",species[self.name].distIoFrame), 0,0,true)
-	 
-	 self.calcMaxwellIz:advance(tCurr, {self.numDensity, self.uParSelf, self.vtSqSelf}, {self.fMaxwellIz})
-	 species[self.name].distIo:write(self.fMaxwellIz, string.format("preModFMax_%d.bp",species[self.name].distIoFrame),0,0)
+	 -- self.tempIz:copy(self.vtSqIz)
+	 -- self.tempIz:scale(self.mass)
+	 -- species[self.name].distIo:write(self.tempIz, string.format("tempIz_%d.bp",species[self.name].distIoFrame), 0,0)
+	 -- species[self.name].distIo:write(self.uParSelf, string.format("elcU_%d.bp",species[self.name].distIoFrame), 0,0)
+
+	 -- Calculate fMaxwell
+	 self.calcMaxwellIz:advance(tCurr, {self.numDensity, neutU, self.vtSqIz}, {self.fMaxwellIz})
 	 self.numDensityCalc:advance(tCurr, {self.fMaxwellIz}, {self.m0fMax})
 	 self.confDiv:advance(tCurr, {self.m0fMax, self.numDensity}, {self.m0mod})
-	 species[self.name].distIo:write(self.numDensity, string.format("m0Elc_%d.bp",species[self.name].distIoFrame), 0,0)
-	 species[self.name].distIo:write(self.m0mod, string.format("m0mod_%d.bp",species[self.name].distIoFrame), 0,0,true)
+	 -- species[self.name].distIo:write(self.m0fMax, string.format("m0fMax_%d.bp",species[self.name].distIoFrame), 0,0)
+	 -- species[self.name].distIo:write(self.numDensity, string.format("m0Elc_%d.bp",species[self.name].distIoFrame), 0,0)
+	 -- species[self.name].distIo:write(self.m0mod, string.format("m0mod_%d.bp",species[self.name].distIoFrame), 0,0)
 	 self.confPhaseMult:advance(tCurr, {self.m0mod, self.fMaxwellIz}, {self.fMaxwellIz})
       end
 

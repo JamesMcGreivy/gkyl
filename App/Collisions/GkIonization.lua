@@ -207,25 +207,18 @@ function GkIonization:advance(tCurr, fIn, species, fRhsOut)
    -- Check whether particle is electron, neutral or ion species
    if (self.speciesName == self.elcNm) then
       -- electrons
-      tmEvalMomStart = Time.clock()
-      local neutM0   = species[self.neutNm]:fluidMoments()[1]
-      local neutU    = species[self.neutNm]:selfPrimitiveMoments()[1]
-      local elcDistF = species[self.speciesName]:getDistF()
-      -- local vtSqIz   = species[self.elcNm]:getIonizationVtSq()
+      tmEvalMomStart   = Time.clock()
+      local neutM0     = species[self.neutNm]:fluidMoments()[1]
+      local neutU      = species[self.neutNm]:selfPrimitiveMoments()[1]
+      local elcDistF   = species[self.speciesName]:getDistF()
       local fMaxwellIz = species[self.elcNm]:getFMaxwellIz()
+
       species[self.elcNm].distIo:write(coefIz, string.format("coefIz_%d.bp",species[self.elcNm].distIoFrame), 0,0)
-      species[self.elcNm].distIo:write(neutU, string.format("neutU_%d.bp",species[self.elcNm].distIoFrame), 0,0, true)
-      
-      -- self.m0elc:copy(elcM0)
-      -- self.maxwellIz:advance(tCurr, {self.m0elc, neutU, vtSqIz}, {self.fMaxwellIz})
-      -- -- Scale Maxwellian to give desired numDensity
-      -- species[self.elcNm].numDensityCalc:advance(tCurr, {self.fMaxwellIz}, {self.m0fMax})
-      -- self.confDiv:advance(0.0, {self.m0fMax, self.m0elc}, {self.m0mod})
-      -- self.collisionSlvr:advance(tCurr, {m0mod, self.fMaxwellIz}, {self.fMaxwellIz})
-      species[self.elcNm].distIo:write(fMaxwellIz, string.format("electron_fMaxwellIz_%d.bp",species[self.elcNm].distIoFrame),0,0)
+      --species[self.elcNm].distIo:write(neutU, string.format("neutU_%d.bp",species[self.elcNm].distIoFrame), 0,0, true)
+      --species[self.elcNm].distIo:write(fMaxwellIz, string.format("electron_fMaxwellIz_%d.bp",species[self.elcNm].distIoFrame),0,0)
       
       self.sumDistF:combine(2.0,fMaxwellIz,-1.0,elcDistF)
-      species[self.elcNm].distIo:write(self.sumDistF, string.format("electron_sumDistF_%d.bp",species[self.elcNm].distIoFrame),0,0,true)
+      --species[self.elcNm].distIo:write(self.sumDistF, string.format("electron_sumDistF_%d.bp",species[self.elcNm].distIoFrame),0,0,true)
  
       self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
       

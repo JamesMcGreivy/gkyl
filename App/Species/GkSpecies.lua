@@ -576,7 +576,7 @@ function GkSpecies:initCrossSpeciesCoupling(species)
 			self.tempIz           = self:allocMoment()
 			self.m0fMax           = self:allocMoment()
 			self.m0mod            = self:allocMoment()
-			self.fMaxwellIz       =  DataStruct.Field {
+			self.fMaxwellIz       = DataStruct.Field {
 			   onGrid        = self.grid,
 			   numComponents = self.basis:numBasis(),
 			   ghost         = {1, 1},

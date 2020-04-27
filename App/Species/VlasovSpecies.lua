@@ -147,6 +147,13 @@ function VlasovSpecies:createSolver(hasE, hasB)
       confBasis  = self.confBasis,
       moment     = "FiveMoments",
    }
+   self.calcMaxwellIz = Updater.MaxwellianOnBasis {
+      onGrid     = self.grid,
+      confGrid   = self.confGrid,
+      confBasis  = self.confBasis,
+      phaseGrid  = self.grid,
+      phaseBasis = self.basis,
+   }
    if self.needSelfPrimMom then
       -- This is used in calcCouplingMoments to reduce overhead and multiplications.
       -- If collisions are LBO, the following also computes boundary corrections and, if polyOrder=1, star moments.
@@ -412,11 +419,25 @@ function VlasovSpecies:initCrossSpeciesCoupling(species)
 	       if (self.collPairs[sN][sO].kind == 'Ionization') then
 		  for collNm, _ in pairs(species[sN].collisions) do
 		     if self.name==species[sN].collisions[collNm].elcNm then
+			self.neutNmIz = species[sN].collisions[collNm].neutNm
 			self.needSelfPrimMom  = true
 			self.calcReactRate    = true
 			self.collNmIoniz      = collNm
 			self.voronovReactRate = self:allocMoment()
-			self.ionizationVtSq   = self:allocMoment()
+			self.vtSqIz           = self:allocMoment()
+			self.m0fMax           = self:allocMoment()
+			self.m0mod            = self:allocMoment()
+			self.fMaxwellIz       = DataStruct.Field {
+			   onGrid        = self.grid,
+			   numComponents = self.basis:numBasis(),
+			   ghost         = {1, 1},
+			}
+			self.confPhaseMult = Updater.CartFieldBinOp {
+			   onGrid     = self.grid,
+			   weakBasis  = self.basis,
+			   fieldBasis = self.confBasis,
+			   operation  = "Multiply",
+			}
 		     end
 		  end
 	       end
@@ -984,9 +1005,17 @@ function VlasovSpecies:calcCouplingMoments(tCurr, rkIdx, species)
    end
 
    if self.calcReactRate then
-      -- compute Voronov reaction self.vornovReactRate
+      local neutU = species[self.neutNmIz]:selfPrimitiveMoments()[1]
+      local fElc = species[self.name]:getDistF()
+      
       species[self.name].collisions[self.collNmIoniz].calcVoronovReactRate:advance(tCurr, {self.vtSqSelf}, {self.voronovReactRate})
-      species[self.name].collisions[self.collNmIoniz].calcIonizationTemp:advance(tCurr, {self.vtSqSelf}, {self.ionizationVtSq})
+      species[self.name].collisions[self.collNmIoniz].calcIonizationTemp:advance(tCurr, {self.vtSqSelf}, {self.vtSqIz})
+      
+      -- Calculate fMaxwell
+      self.calcMaxwellIz:advance(tCurr, {self.numDensity, neutU, self.vtSqIz}, {self.fMaxwellIz})
+      self.numDensityCalc:advance(tCurr, {self.fMaxwellIz}, {self.m0fMax})
+      self.confDiv:advance(tCurr, {self.m0fMax, self.numDensity}, {self.m0mod})
+      self.confPhaseMult:advance(tCurr, {self.m0mod, self.fMaxwellIz}, {self.fMaxwellIz})
    end
 
    if self.calcCXSrc then
@@ -1137,8 +1166,8 @@ function VlasovSpecies:getVoronovReactRate()
    return self.voronovReactRate
 end
 
-function VlasovSpecies:getIonizationVtSq()
-   return self.ionizationVtSq
+function VlasovSpecies:getFMaxwellIz()
+   return self.fMaxwellIz
 end
 
 function VlasovSpecies:getSrcCX()

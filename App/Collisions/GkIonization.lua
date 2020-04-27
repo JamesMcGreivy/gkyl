@@ -124,30 +124,6 @@ function GkIonization:createSolver(funcField, species)
 	 elemCharge = self.charge,
       	 E          = self._E,
       }
-      -- -- fields for elc ionization maxwellian
-      -- self.maxwellIz = Updater.GkMaxwellianOnBasis {
-      -- 	 onGrid     = self.phaseGrid,
-      -- 	 confGrid   = self.confGrid,
-      -- 	 confBasis  = self.confBasis,
-      -- 	 phaseGrid  = self.phaseGrid,
-      -- 	 phaseBasis = self.phaseBasis,
-      -- 	 gkfacs     = {self.mass, species[self.elcNm].bmag},
-      -- }
-      -- self.fMaxwellIz  = DataStruct.Field {
-      -- 	 onGrid        = self.phaseGrid,
-      -- 	 numComponents = self.phaseBasis:numBasis(),
-      -- 	 ghost         = {1, 1},
-      -- }
-      -- self.m0fMax = DataStruct.Field {
-      -- 	 onGrid        = self.confGrid,
-      -- 	 numComponents = self.confBasis:numBasis(),
-      -- 	 ghost         = {1, 1},
-      -- }
-      -- self.m0mod = DataStruct.Field {
-      -- 	 onGrid        = self.confGrid,
-      -- 	 numComponents = self.confBasis:numBasis(),
-      -- 	 ghost         = {1, 1},
-      -- }
       self.sumDistF    = DataStruct.Field {
 	 onGrid        = self.phaseGrid,
 	 numComponents = self.phaseBasis:numBasis(),

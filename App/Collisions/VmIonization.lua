@@ -116,27 +116,12 @@ function VmIonization:createSolver(funcField)
 	 elemCharge = self.charge,
       	 E          = self._E,       -- ionization energy
       }
-      -- fields for elc ionization maxwellian
-      self.maxwellIz = Updater.MaxwellianOnBasis {
-	 onGrid     = self.phaseGrid,
-	 confGrid   = self.confGrid,
-	 confBasis  = self.confBasis,
-	 phaseGrid  = self.phaseGrid,
-	 phaseBasis = self.phaseBasis,
-      }
-      self.fMaxwellIz  = DataStruct.Field {
-	 onGrid        = self.phaseGrid,
-	 numComponents = self.phaseBasis:numBasis(),
-	 ghost         = {1, 1},
-      }
       self.sumDistF    = DataStruct.Field {
 	 onGrid        = self.phaseGrid,
 	 numComponents = self.phaseBasis:numBasis(),
 	 ghost         = {1, 1},
       }
    end
-
-   
    self.confMult = Updater.CartFieldBinOp {
          onGrid     = self.confGrid,
          weakBasis  = self.confBasis,
@@ -194,29 +179,23 @@ function VmIonization:advance(tCurr, fIn, species, fRhsOut)
       local neutM0   = species[self.neutNm]:fluidMoments()[1]
       local neutU    = species[self.neutNm]:selfPrimitiveMoments()[1]
       local elcDistF = species[self.speciesName]:getDistF()
-      local vtSqIz   = species[self.elcNm]:getIonizationVtSq()
+      local fMaxwellIz = species[self.elcNm]:getFMaxwellIz()
 
-      self.m0elc:copy(elcM0)
-      self.maxwellIz:advance(tCurr, {self.m0elc, neutU, vtSqIz}, {self.fMaxwellIz})
-      self.sumDistF:combine(2.0,self.fMaxwellIz,-1.0,elcDistF)
-      self.numDensityCalc:advance(tCurr, {self.sumDistF}, {self.sumDistFM0})
-
-      self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
-      
+      self.sumDistF:combine(2.0,fMaxwellIz,-1.0,elcDistF)      
       self.confMult:advance(tCurr, {coefIz, neutM0}, {self.coefM0})
       self.collisionSlvr:advance(tCurr, {self.coefM0, self.sumDistF}, {self.ionizSrc})
-       
+      self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
       fRhsOut:accumulate(1.0,self.ionizSrc)
    elseif (species[self.speciesName].charge == 0) then
       -- neutrals
       tmEvalMomStart = Time.clock()
       self.m0elc:copy(elcM0)
       self.neutDistF:copy(distFn)
-
-      self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
       
       self.confMult:advance(tCurr, {coefIz, self.m0elc}, {self.coefM0})
       self.collisionSlvr:advance(tCurr, {self.coefM0, self.neutDistF}, {self.ionizSrc})
+      self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
+
       fRhsOut:accumulate(-1.0,self.ionizSrc)  
    else
       -- ions 
@@ -224,10 +203,10 @@ function VmIonization:advance(tCurr, fIn, species, fRhsOut)
       self.m0elc:copy(elcM0)
       self.neutDistF:copy(distFn)
 
-      self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
-
       self.confMult:advance(tCurr, {coefIz, self.m0elc}, {self.coefM0})
       self.collisionSlvr:advance(tCurr, {self.coefM0, self.neutDistF}, {self.ionizSrc})
+      self._tmEvalMom = self._tmEvalMom + Time.clock() - tmEvalMomStart
+
       fRhsOut:accumulate(1.0,self.ionizSrc)
    end
 end

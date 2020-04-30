@@ -1326,7 +1326,6 @@ function GkSpecies:calcCouplingMoments(tCurr, rkIdx, species)
       end
 
       if self.calcReactRate then
-	 -- compute voronov reaction self.vornovReactRate
 	 local neutU = species[self.neutNmIz]:selfPrimitiveMoments()[1]
 	 local fElc = species[self.name]:getDistF()
 	 

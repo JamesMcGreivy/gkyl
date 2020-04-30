@@ -189,7 +189,7 @@ function GkIonization:advance(tCurr, fIn, species, fRhsOut)
       local elcDistF   = species[self.speciesName]:getDistF()
       local fMaxwellIz = species[self.elcNm]:getFMaxwellIz()
 
-      species[self.elcNm].distIo:write(coefIz, string.format("coefIz_%d.bp",species[self.elcNm].distIoFrame), 0,0)
+      --species[self.elcNm].distIo:write(coefIz, string.format("coefIz_%d.bp",species[self.elcNm].distIoFrame), 0,0)
       --species[self.elcNm].distIo:write(neutU, string.format("neutU_%d.bp",species[self.elcNm].distIoFrame), 0,0, true)
       --species[self.elcNm].distIo:write(fMaxwellIz, string.format("electron_fMaxwellIz_%d.bp",species[self.elcNm].distIoFrame),0,0)
       
@@ -202,7 +202,7 @@ function GkIonization:advance(tCurr, fIn, species, fRhsOut)
       self.collisionSlvr:advance(tCurr, {self.coefM0, self.sumDistF}, {self.ionizSrc})
       -- Uncomment to test without fMaxwellian(Tiz)
       -- self.collisionSlvr:advance(tCurr, {self.coefM0, elcDistF}, {self.ionizSrc})      
-      species[self.elcNm].distIo:write(self.ionizSrc, string.format("electron_ionizSrc_%d.bp",species[self.elcNm].distIoFrame),0,0)
+      -- species[self.elcNm].distIo:write(self.ionizSrc, string.format("electron_ionizSrc_%d.bp",species[self.elcNm].distIoFrame),0,0)
       
       fRhsOut:accumulate(1.0,self.ionizSrc)
    elseif (species[self.speciesName].charge == 0) then
@@ -231,6 +231,10 @@ function GkIonization:advance(tCurr, fIn, species, fRhsOut)
 end
    
 function GkIonization:write(tm, frame)
+end
+
+function GkIonization:getIonizSrc()
+   return self.ionizSrc
 end
 
 function GkIonization:slvrTime()

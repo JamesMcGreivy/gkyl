@@ -152,26 +152,46 @@ function GkIonization:createSolver(funcField, species)
       onGrid        = self.confGrid,
       numComponents = self.confBasis:numBasis(),
       ghost         = {1, 1},
+      metaData = {
+	 polyOrder = self.basis:polyOrder(),
+	 basisType = self.basis:id()
+      },
    }
    self.coefM0 = DataStruct.Field {
       onGrid        = self.confGrid,
       numComponents = self.confBasis:numBasis(),
       ghost         = {1, 1},
+      metaData = {
+	 polyOrder = self.basis:polyOrder(),
+	 basisType = self.basis:id()
+      },
    }
    self.neutDistF = DataStruct.Field {
       onGrid        = self.phaseGrid,
       numComponents = self.phaseBasis:numBasis(),
       ghost         = {1, 1},
+      metaData = {
+	 polyOrder = self.basis:polyOrder(),
+	 basisType = self.basis:id()
+      },
    }
    self.ionizSrc = DataStruct.Field {
       onGrid        = self.phaseGrid,
       numComponents = self.phaseBasis:numBasis(),
       ghost         = {1, 1},
+      metaData = {
+	 polyOrder = self.basis:polyOrder(),
+	 basisType = self.basis:id()
+      },
    }
    self.sumDistFM0  = DataStruct.Field {
       onGrid        = self.confGrid,
       numComponents = self.confBasis:numBasis(),
       ghost         = {1, 1},
+      metaData = {
+	 polyOrder = self.basis:polyOrder(),
+	 basisType = self.basis:id()
+      },
    }
 end
 

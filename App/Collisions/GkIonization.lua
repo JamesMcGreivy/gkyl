@@ -153,8 +153,8 @@ function GkIonization:createSolver(funcField, species)
       numComponents = self.confBasis:numBasis(),
       ghost         = {1, 1},
       metaData = {
-	 polyOrder = self.basis:polyOrder(),
-	 basisType = self.basis:id()
+	 polyOrder = self.confBasis:polyOrder(),
+	 basisType = self.confBasis:id()
       },
    }
    self.coefM0 = DataStruct.Field {
@@ -162,8 +162,8 @@ function GkIonization:createSolver(funcField, species)
       numComponents = self.confBasis:numBasis(),
       ghost         = {1, 1},
       metaData = {
-	 polyOrder = self.basis:polyOrder(),
-	 basisType = self.basis:id()
+	 polyOrder = self.confBasis:polyOrder(),
+	 basisType = self.confBasis:id()
       },
    }
    self.neutDistF = DataStruct.Field {
@@ -171,8 +171,8 @@ function GkIonization:createSolver(funcField, species)
       numComponents = self.phaseBasis:numBasis(),
       ghost         = {1, 1},
       metaData = {
-	 polyOrder = self.basis:polyOrder(),
-	 basisType = self.basis:id()
+	 polyOrder = self.phaseBasis:polyOrder(),
+	 basisType = self.phaseBasis:id()
       },
    }
    self.ionizSrc = DataStruct.Field {
@@ -180,8 +180,8 @@ function GkIonization:createSolver(funcField, species)
       numComponents = self.phaseBasis:numBasis(),
       ghost         = {1, 1},
       metaData = {
-	 polyOrder = self.basis:polyOrder(),
-	 basisType = self.basis:id()
+	 polyOrder = self.phaseBasis:polyOrder(),
+	 basisType = self.phaseBasis:id()
       },
    }
    self.sumDistFM0  = DataStruct.Field {
@@ -189,8 +189,8 @@ function GkIonization:createSolver(funcField, species)
       numComponents = self.confBasis:numBasis(),
       ghost         = {1, 1},
       metaData = {
-	 polyOrder = self.basis:polyOrder(),
-	 basisType = self.basis:id()
+	 polyOrder = self.confBasis:polyOrder(),
+	 basisType = self.confBasis:id()
       },
    }
 end

@@ -679,7 +679,7 @@ function KineticSpecies:combineRk(outIdx, a, aIdx, ...)
 end
 
 function KineticSpecies:suggestDt()
-   if not self.evolve then return GKYL_MAX_DOUBLE end
+   if not self.evolve or not self.evolveCollisionless then return GKYL_MAX_DOUBLE end
 
    -- Loop over local region. 
    local grid = self.grid

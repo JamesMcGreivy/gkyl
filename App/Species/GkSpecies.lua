@@ -28,7 +28,7 @@ local SP_BC_COPY     = 6
 GkSpecies.bcAbsorb   = SP_BC_ABSORB      -- Absorb all particles.
 GkSpecies.bcOpen     = SP_BC_OPEN        -- Zero gradient.
 GkSpecies.bcReflect  = SP_BC_REFLECT     -- Specular reflection.
-GkSpecies.bcSheath   = SP_BC_SHEATH      -- Specular reflection.
+GkSpecies.bcSheath   = SP_BC_SHEATH      -- Conducting sheath.
 GkSpecies.bcZeroFlux = SP_BC_ZEROFLUX    -- Zero flux.
 GkSpecies.bcCopy     = SP_BC_COPY        -- Copy stuff.
 
@@ -585,12 +585,6 @@ function GkSpecies:initCrossSpeciesCoupling(species)
 			      basisType = self.basis:id()
 			   },
 			}
-			self.confPhaseMult = Updater.CartFieldBinOp {
-			   onGrid     = self.grid,
-			   weakBasis  = self.basis,
-			   fieldBasis = self.confBasis,
-			   operation  = "Multiply",
-			}
 		     end
 		  end
 	       end
@@ -918,6 +912,12 @@ function GkSpecies:createDiagnostics()
       weakBasis  = self.confBasis,
       operation  = "Divide",
       onGhosts   = true,
+   }
+   self.confPhaseMult = Updater.CartFieldBinOp {
+      onGrid     = self.grid,
+      weakBasis  = self.basis,
+      fieldBasis = self.confBasis,
+      operation  = "Multiply",
    }
    -- Sort moments into diagnosticMoments, diagnosticWeakMoments, and diagnosticAuxMoments.
    for i, mom in pairs(self.diagnosticMoments) do
@@ -1512,6 +1512,10 @@ end
 
 function GkSpecies:getFMaxwellIz()
    return self.fMaxwellIz
+end
+
+function GkSpecies:getSrcCX()
+   return self.srcCX
 end
 
 function GkSpecies:solverVolTime()

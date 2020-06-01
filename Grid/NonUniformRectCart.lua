@@ -1,20 +1,22 @@
 -- Gkyl ------------------------------------------------------------------------
 --
--- Non-uniform Cartesian grids
+-- Non-uniform Cartesian grids.
+--
 --    _______     ___
 -- + 6 @ |||| # P ||| +
 --------------------------------------------------------------------------------
 
--- system libraries
+-- System libraries.
 local ffi = require "ffi"
 
--- Gkyl libraries
+-- Gkyl libraries.
+local DataStruct       = require "DataStruct"
 local DecompRegionCalc = require "Lib.CartDecomp"
-local Lin = require "Lib.Linalg"
-local Mpi = require "Comm.Mpi"
-local Proto = require "Lib.Proto"
-local Range = require "Lib.Range"
-local RectCart = require "Grid.RectCart"
+local Lin              = require "Lib.Linalg"
+local Mpi              = require "Comm.Mpi"
+local Proto            = require "Lib.Proto"
+local Range            = require "Lib.Range"
+local RectCart         = require "Grid.RectCart"
 
 -- NonUniformRectCartGrid ------------------------------------------------------
 --
@@ -24,7 +26,7 @@ local RectCart = require "Grid.RectCart"
 -- general non-uniform meshes.
 --------------------------------------------------------------------------------
 
--- Fill array ncoords such that cell spacing is uniform
+-- Fill array ncoords such that cell spacing is uniform.
 local function fillWithUniformNodeCoords(lower, upper, ncell, vcoords)
    local dx = (upper-lower)/ncell
    for n = 1, ncell+1 do
@@ -32,7 +34,7 @@ local function fillWithUniformNodeCoords(lower, upper, ncell, vcoords)
    end
 end
 
--- Compute nodal coordinates using mapping function
+-- Compute nodal coordinates using mapping function.
 local function fillWithMappedNodeCoords(lower, upper, ncell, mapFunc, vcoords)
    local dx = (upper-lower)/ncell
    for n = 1, ncell+1 do
@@ -40,41 +42,41 @@ local function fillWithMappedNodeCoords(lower, upper, ncell, mapFunc, vcoords)
    end
 end
 
-local NonUniformRectCart = Proto(RectCart) -- extends RectCart
+local NonUniformRectCart = Proto(RectCart)   -- Extends RectCart.
 
 function NonUniformRectCart:init(tbl)
    NonUniformRectCart.super.init(self, tbl)
 
    local ndim = self._ndim
-   -- set grid index to first cell in domain
-   for d = 1, ndim do
-      self._currIdx[d] = 1;
-   end
+   -- Set grid index to first cell in domain.
+   for d = 1, ndim do self._currIdx[d] = 1 end
+
+   self._mappings = tbl.mappings
    
-   self._nodeCoords = {} -- nodal coordinates in each direction      
-   -- initialize nodes to be uniform (will be over-written if mappings are provided)
+   self._nodeCoords = {}   -- Nodal coordinates in each direction.
+   -- Initialize nodes to be uniform (will be over-written if mappings are provided).
    for d = 1, ndim do
-      -- allocate space: one node extra than cells
+      -- Allocate space: one node extra than cells.
       local v =  Lin.Vec(self._numCells[d]+1)
       fillWithUniformNodeCoords(
-	 self._lower[d], self._upper[d], self._numCells[d], v)
+         self._lower[d], self._upper[d], self._numCells[d], v)
       self._nodeCoords[d] = v
    end
    
-   -- compute nodal coordinates
+   -- Compute nodal coordinates.
    if tbl.mappings then
-      -- loop over mapping functions, using them to set nodal coordinates
+      -- Loop over mapping functions, using them to set nodal coordinates.
       for d, mapFunc in next, tbl.mappings, nil do
-	 if d > ndim then break end -- break out if too many functions provided
-	 fillWithMappedNodeCoords(
-	    self._lower[d], self._upper[d], self._numCells[d],
-	    mapFunc, self._nodeCoords[d])
+         if d > ndim then break end   -- Break out if too many functions provided.
+         fillWithMappedNodeCoords(
+            self._lower[d], self._upper[d], self._numCells[d],
+            mapFunc, self._nodeCoords[d])
       end
    end
 end
 
--- member functions
-function NonUniformRectCart:id() return "nonuniform" end
+-- Member functions.
+function NonUniformRectCart:id() return "mapped" end
 function NonUniformRectCart:lower(dir) return self._nodeCoords[dir][1] end
 function NonUniformRectCart:upper(dir) return self._nodeCoords[dir][self:numCells(dir)+1] end
 function NonUniformRectCart:nodeCoords(dir) return self._nodeCoords[dir] end
@@ -82,9 +84,20 @@ function NonUniformRectCart:dx(dir)
    local nodeCoords, idx = self:nodeCoords(dir), self._currIdx
    return nodeCoords[idx[dir]+1]-nodeCoords[idx[dir]]
 end
-function NonUniformRectCart:cellCenterInDir(d)
-   local nodeCoords = self:nodeCoords(d)
-   return 0.5*(nodeCoords[idx[d]+1]+nodeCoords[idx[d]])
+function NonUniformRectCart:getDx(dxOut) 
+   for d = 1, self:ndim() do
+      dxOut[d] = self:dx(d)
+   end
+end
+function NonUniformRectCart:cellCenterInDir(dir)
+   local nodeCoords, idx = self:nodeCoords(dir), self._currIdx
+   return 0.5*(nodeCoords[idx[dir]+1]+nodeCoords[idx[dir]])
+end
+function NonUniformRectCart:cellLowerInDir(dir)
+   return self:cellCenterInDir(dir)-0.5*self:dx(dir)
+end
+function NonUniformRectCart:cellUpperInDir(dir)
+   return self:cellCenterInDir(dir)+0.5*self:dx(dir)
 end
 function NonUniformRectCart:cellCenter(xc)
    local idx = self._currIdx
@@ -99,6 +112,46 @@ function NonUniformRectCart:cellVolume()
       v = v*self:dx(d)
    end
    return v
+end
+
+function NonUniformRectCart:write(fName, tmStamp, metaData)
+   -- Write a file containing the grid node coordinates. 
+
+   -- Create a grid over nodes and a field to store nodal coordinates.
+   local cells, lower, upper, dx = {}, {}, {}, {}
+   for d = 1, self:ndim() do
+      cells[d] = self:numCells(d)+1   -- One more layer of nodes than cells.
+      -- This ensures cell-center of nodal grid lie at nodes of original grid.
+      lower[d] = self:lower(d) - 0.5*self:dx(d)
+      upper[d] = self:upper(d) + 0.5*self:dx(d)
+      dx[d] = self:dx(d)
+   end
+   -- WILL NEED TO MAKE THIS WORK IN PARALLEL .. EVENTUALLY
+   local grid = RectCart {
+      lower = lower,
+      upper = upper,
+      cells = cells,
+   }
+   local nodalCoords = DataStruct.Field {
+      onGrid        = grid,
+      numComponents = self:ndim(),
+      metaData      = metaData
+   }
+
+   local xnc, xnp = Lin.Vec(self:ndim()), Lin.Vec(self:ndim())
+
+   local localRange = nodalCoords:localRange()
+   local indexer = nodalCoords:genIndexer()
+   for idx in localRange:rowMajorIter() do
+      grid:setIndex(idx)
+      local nitr = nodalCoords:get(indexer(idx))
+      for d = 1, self:ndim() do
+         nodeCoords = self:nodeCoords(d)
+         nitr[d] = nodeCoords[idx[d]]
+      end
+   end
+
+   nodalCoords:write(fName, tmStamp)
 end
 
 return NonUniformRectCart

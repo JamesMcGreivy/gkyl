@@ -153,6 +153,13 @@ local function Alloc_meta_ctor(elct)
 	 function (self)
 	    return self._data[self._size-1]
 	 end,
+      assignLast = copyElemFunc and
+	 function (self, v)
+	    copyElemFunc(self._data[self._size-1], v)
+	 end or
+	 function (self, v)
+	    self._data[self._size-1] = v
+	 end,
       popLast = function(self)
 	 assert(self._size > 0, "Can't pop from empty Alloc array")
 	 local l = self:last()
@@ -198,7 +205,7 @@ local function Alloc_meta_ctor(elct)
 	 self:delete()
       end,
    }
-   return metatype(typeof("struct { int32_t _size; int32_t _capacity; $* _data; }", elct), alloc_mt)
+   return metatype(typeof("struct { int _size; int _capacity; $* _data; }", elct), alloc_mt)
 end
 
 -- function to create an allocator for custom type

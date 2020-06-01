@@ -54,29 +54,30 @@ function test_1()
 end
 
 function test_2()
-   local dynVec = DataStruct.DynVector { numComponents = 2 }
+   local dynVec = DataStruct.DynVector {
+      numComponents = 2,
+      metaData      = {testNumber = 2}
+   }
    assert_equal(dynVec:numComponents(), 2, "Testing number of components")
 
    for i = 1, 5 do
       dynVec:appendData(0.1*i, {2.5*i^2, 2.5*i^2+0.5})
    end
-   dynVec:write("test_1.bp", 1.5, 1)
+   dynVec:write("test.bp", 1.5, 0)
    for i = 6, 10 do
       dynVec:appendData(0.1*i, {2.5*i^2, 2.5*i^2+0.5})
    end
-   dynVec:write("test_2.bp", 1.5, 2)
+   dynVec:write("test.bp", 1.5, 1)
 end
 
 function test_2r()
    local dynVec = DataStruct.DynVector { numComponents = 2 }
    assert_equal(dynVec:numComponents(), 2, "Testing number of components")
 
-   local tmStamp, frNum = dynVec:read("test_1.bp")
-   assert_equal(1.5, tmStamp, "Testing time-stamp")
-   assert_equal(1, frNum, "Testing frame")
+   local tmStamp, frNum = dynVec:read("test.bp")
 
    -- check contents
-   assert_equal(5, dynVec:size(), "Checking size")
+   assert_equal(10, dynVec:size(), "Checking size")
 
    local tmMesh = dynVec:timeMesh()
    for i = 1, dynVec:size() do
@@ -107,10 +108,92 @@ function test_3()
    assert_equal(lv[2], 2.5*9^2+0.5, "Testing last value")
 end
 
+function test_4()
+   local dynVec = DataStruct.DynVector { numComponents = 2 }
+   dynVec:appendData(0.1, {2.5, 3.5})
+
+   local tm, lv = dynVec:lastData()
+   assert_equal(0.1, tm, "Testing last time")
+   assert_equal(2.5, lv[1], "Testing last value")
+   assert_equal(3.5, lv[2], "Testing last value")
+
+   dynVec:assignLastVal(2, {1.75, 1.25})
+   tm, lv = dynVec:lastData()
+   assert_equal(0.1, tm, "Testing last time")
+   assert_equal(3.5, lv[1], "Testing last value after assignLastVal")
+   assert_equal(2.5, lv[2], "Testing last value after assignLastVal")
+
+   local dummyVec = DataStruct.DynVector { numComponents = 2 }
+   dummyVec:appendData(0.1, {7.5, 4.5})
+
+   for i = 2, 10 do
+      dynVec:appendData(0.1*i, {2.5+i, 3.5+i})
+   end
+   dynVec:copyLast(dummyVec)
+   tm, lv = dynVec:lastData()
+   assert_equal(0.1, tm, "Testing last time")
+   assert_equal(7.5, lv[1], "Testing last value after copyLast")
+   assert_equal(4.5, lv[2], "Testing last value after copyLast")
+
+   for i = 11, 20 do
+      dynVec:appendData(0.1*i, {2.5+i, 3.5+i})
+   end
+   dynVec:accumulateLastOne(2.0,dummyVec)
+   tm, lv = dynVec:lastData()
+   assert_equal(2.0, tm, "Testing last time")
+   assert_equal(22.5+7.5*2, lv[1], "Testing last value after accumulateLastOne")
+   assert_equal(23.5+4.5*2, lv[2], "Testing last value after accumulateLastOne")
+
+   dynVec:assignLast(0.2, dummyVec)
+   tm, lv = dynVec:lastData()
+   assert_equal(2.0, tm, "Testing last time")
+   assert_equal(7.5*0.2, lv[1], "Testing last value after assignLast")
+   assert_equal(4.5*0.2, lv[2], "Testing last value after assignLast")
+
+   dynVec:combineLast(1.0, dummyVec, 2.0, dummyVec)
+   tm, lv = dynVec:lastData()
+   assert_equal(2.0, tm, "Testing last time")
+   assert_equal(7.5*3.0, lv[1], "Testing last value after combineLast")
+   assert_equal(4.5*3.0, lv[2], "Testing last value after combineLast")
+
+   dynVec:accumulateLast(1.0, dummyVec, 2.0, dummyVec)
+   tm, lv = dynVec:lastData()
+   assert_equal(2.0, tm, "Testing last time")
+   assert_equal(7.5*6.0, lv[1], "Testing last value after accumulateLast")
+   assert_equal(4.5*6.0, lv[2], "Testing last value after accumulateLast")
+
+   dynVec:assignLastTime(3.0)
+   tm, lv = dynVec:lastData()
+   assert_equal(3.0, tm, "Testing last time after assignLastTime")
+
+   dynVec:appendLast(dummyVec)
+   tm, lv = dynVec:lastData()
+   assert_equal(0.1, tm, "Testing last time after appendLast")
+   assert_equal(7.5, lv[1], "Testing last value after appendLast")
+   assert_equal(4.5, lv[2], "Testing last value after appendLast")
+
+   dummyVec:copy(dynVec)
+   -- Check contents.
+   assert_equal(dummyVec:size(), dynVec:size(), "Checking size after copy.")
+   local tmMesh1 = dynVec:timeMesh()
+   local tmMesh2 = dummyVec:timeMesh()
+   local data1   = dynVec:data()
+   local data2   = dummyVec:data()
+   for i = 1, dynVec:size() do
+      assert_equal(tmMesh1[i], tmMesh2[i], "Checking time-mesh after copy.")
+      local v1 = data1[i]
+      local v2 = data2[i]
+      assert_equal(v1[1], v2[1], "Checking contents[1] after copy.")
+      assert_equal(v1[2], v2[2], "Checking contents[2] after copy.")
+   end
+
+end
+
 test_1()
 test_2()
 test_2r()
 test_3()
+test_4()
 
 totalFail = allReduceOneInt(stats.fail)
 totalPass = allReduceOneInt(stats.pass)

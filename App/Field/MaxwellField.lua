@@ -90,6 +90,7 @@ function MaxwellField:fullInit(appTbl)
    end
 
    self.ioFrame = 0 -- Frame number for IO.
+   self.dynVecRestartFrame = 0 -- Frame number of restarts (for DynVectors only).
 
    self._hasSsBnd = tbl.hasSsBnd
    self._inOutFunc = tbl.inOutFunc
@@ -202,7 +203,7 @@ function MaxwellField:alloc(nRkDup)
 end
 
 function MaxwellField:createSolver()
-   local maxwellEqn = PerfMaxwell {
+   self.equation = PerfMaxwell {
       lightSpeed          = self.lightSpeed,
       elcErrorSpeedFactor = self.ce,
       mgnErrorSpeedFactor = self.cb,
@@ -218,7 +219,7 @@ function MaxwellField:createSolver()
 	 onGrid   = self.grid,
 	 basis    = self.basis,
 	 cfl      = self.cfl,
-	 equation = maxwellEqn,
+	 equation = self.equation,
       }
    else
       -- Using FV scheme.
@@ -242,7 +243,7 @@ function MaxwellField:createSolver()
       for d = 1, ndim do
 	 self.fieldHyperSlvr[d] = Updater.WavePropagation {
 	    onGrid           = self.grid,
-	    equation         = maxwellEqn,
+	    equation         = self.equation,
 	    limiter          = self.limiter,
 	    cfl              = self.cfl,
 	    updateDirections = {d},
@@ -412,7 +413,8 @@ function MaxwellField:writeRestart(tm)
    self.fieldIo:write(self.em[1], "field_restart.bp", tm, self.ioFrame, false)
 
    -- (the first "false" prevents flushing of data after write, the second "false" prevents appending)
-   self.emEnergy:write("fieldEnergy_restart.bp", tm, self.ioFrame, false, false)
+   self.emEnergy:write("fieldEnergy_restart.bp", tm, self.dynVecRestartFrame, false, false)
+   self.dynVecRestartFrame = self.dynVecRestartFrame + 1
 end
 
 function MaxwellField:readRestart()

@@ -6,6 +6,7 @@
 --------------------------------------------------------------------------------
 
 -- system libraries
+local CartField = require "DataStruct.CartField"
 local EqBase = require "Eq.EqBase"
 local Lin = require "Lib.Linalg"
 local Proto = require "Lib.Proto"
@@ -13,6 +14,21 @@ local VlasovModDecl = require "Eq.vlasovData.VlasovModDecl"
 local ffi = require "ffi"
 local ffiC = ffi.C
 local xsys = require "xsys"
+local new, sizeof, typeof, metatype = xsys.from(ffi,
+     "new, sizeof, typeof, metatype")
+
+local cuda = nil
+if GKYL_HAVE_CUDA then
+   cuda = require "Cuda.RunTime"
+end
+
+ffi.cdef [[ 
+  typedef struct GkylVlasov GkylVlasov;
+  GkylVlasov* new_Vlasov(unsigned cdim, unsigned vdim, unsigned polyOrder, unsigned basisType, double qbym, bool hasForceTerm);
+  GkylVlasov* new_Vlasov_onDevice(GkylVlasov *v);
+  void setAuxFields(GkylVlasov *eq, GkylCartField_t *emField);
+  int getCdim(GkylVlasov *v);
+]]
 
 -- Vlasov equation on a rectangular mesh
 local Vlasov = Proto(EqBase)
@@ -69,6 +85,23 @@ function Vlasov:init(tbl)
 
    -- flag to indicate if we are being called for first time
    self._isFirst = true
+
+   if GKYL_HAVE_CUDA then
+     self:initDevice()
+   end
+end
+
+function Vlasov:initDevice()
+   local bId = self._phaseBasis:id()
+   local b = 0
+   if bId == "maximal-order" then 
+     b = 1
+   end
+   if bId == "serendipity" then 
+     b = 2
+   end
+   self._onHost = ffiC.new_Vlasov(self._cdim, self._vdim, self._phaseBasis:polyOrder(), b, self._qbym, self._hasForceTerm) 
+   self._onDevice = ffiC.new_Vlasov_onDevice(self._onHost)
 end
 
 -- Methods
@@ -147,6 +180,14 @@ function Vlasov:setAuxFields(auxFields)
 	 self._emIdxr = self._emField:genIndexer()
 	 self._isFirst = false -- no longer first time
       end
+   end
+end
+
+function Vlasov:setAuxFieldsOnDevice(auxFields)
+   if self._hasForceTerm then -- (no fields for neutral particles)
+      -- single aux field that has the full EM field
+      self._emField = auxFields[1]
+      ffiC.setAuxFields(self._onDevice, self._emField._onDevice)
    end
 end
 

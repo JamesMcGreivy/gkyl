@@ -26,12 +26,12 @@ _M.colMajor = 2
 --------------------------------------------------------------------------------
 
 ffi.cdef [[ 
-  typedef struct { int32_t _ndim; int32_t _lower[6]; int32_t _upper[6]; 
+  typedef struct { int _ndim; int _lower[6]; int _upper[6]; 
     int _rowMajorIndexerCoeff[7], _colMajorIndexerCoeff[7];
-  } Range_t; 
+  } GkylRange_t; 
 ]]
-local rTy = typeof("Range_t")
-local rSz = sizeof(typeof("Range_t"))
+local rTy = typeof("GkylRange_t")
+local rSz = sizeof(typeof("GkylRange_t"))
 
 -- generic iterator function creator: only difference between row- and
 -- col-major order is the order in which the indices are incremented
@@ -255,6 +255,14 @@ local range_mt = {
 	    end
 	 end
 	 return false
+      end,
+      contains = function (self, idx)
+	 for d = 1, self:ndim() do
+	    if idx[d]<self:lower(d) or idx[d]>self:upper(d) then
+	       return false
+	    end
+	 end
+	 return true
       end,
       _iter = function (self, iter_func, idxStart, maxBumps)
 	  -- package up iterator state into table

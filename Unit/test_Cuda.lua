@@ -11,24 +11,24 @@ if GKYL_HAVE_CUDA == false then
    return 0
 end
 
-local Unit    = require "Unit"
-local Alloc   = require "Lib.Alloc"
-local ffi     = require "ffi"
-local cuda    = require "Cuda.RunTime"
+local Unit = require "Unit"
+local Alloc = require "Lib.Alloc"
+local ffi = require "ffi"
+local cuda = require "Cuda.RunTime"
 local cuAlloc = require "Cuda.Alloc"
-local Range   = require "Lib.Range"
-local Grid    = require "Grid"
+local Range = require "Lib.Range"
+local Grid = require "Grid"
 
 local assert_equal = Unit.assert_equal
-local stats        = Unit.stats
+local stats = Unit.stats
 
 ffi.cdef [[
   void unit_sumArray(int numBlocks, int numThreads, int n, double a, double *x, double *y);
   void unit_sayHello();
-  void unit_showRange(Range_t *range);
+  void unit_showRange(GkylRange_t *range);
 
-  void unit_showGrid(RectCart_t *grid);
-  void unit_getCellCenter(RectCart_t *grid, int *idx, double *xc);
+  void unit_showGrid(GkylRectCart_t *grid);
+  void unit_getCellCenter(GkylRectCart_t *grid, int *idx, double *xc);
 ]]
 
 -- basis tests
@@ -239,7 +239,7 @@ end
 function test_6()
    local range = Range.Range({5}, {20})
    local cuRange = Range.copyHostToDevice(range)
-   ffi.C.unit_showRange(cuRange)
+   --ffi.C.unit_showRange(cuRange)
 
    cuda.Free(cuRange)
 end
@@ -252,7 +252,7 @@ function test_7()
       cells = {10, 20}
    }
    local cuGrid = grid:copyHostToDevice()
-   ffi.C.unit_showGrid(cuGrid)
+   --ffi.C.unit_showGrid(cuGrid)
 
    local h_idx = Alloc.Int(2)
    h_idx[1] = 1

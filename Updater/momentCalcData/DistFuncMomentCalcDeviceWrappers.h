@@ -7,16 +7,20 @@
 // + 6 @ |||| # P ||| +
 //------------------------------------------------------------------------------
 //
-#include <RectCartDeviceImpl.h>
-#include <RangeDeviceImpl.h>
-#include <GkCudaFuncs.h>
+#include <GkylRectCart.h>
+#include <GkylRange.h>
+#include <GkylCudaFuncs.h>
+#include <GkylCartField.h>
 
 #ifndef DIST_FUNC_MOMENT_CALC_DEVICE_WRAPPERS_H 
 #define DIST_FUNC_MOMENT_CALC_DEVICE_WRAPPERS_H 
 
 extern "C" { 
 
-void calcMom1x1vSer_M0_P1(RectCart_t *grid, Range_t *range, GkDeviceProp *prop, int numBlocks, int numThreads, const double *fIn, double *out); 
+void cuda_MomentCalc1x1vSer_M0_P1(GkDeviceProp *prop, int numBlocks, int numThreads, GkylCartField_t *fIn, GkylCartField_t *out); 
+void cuda_MomentCalc1x1vSer_M0_P2(GkDeviceProp *prop, int numBlocks, int numThreads, GkylCartField_t *fIn, GkylCartField_t *out); 
+void cuda_MomentCalc1x1vSer_M1i_P1(GkDeviceProp *prop, int numBlocks, int numThreads, GkylCartField_t *fIn, GkylCartField_t *out); 
+void cuda_MomentCalc1x1vSer_M1i_P2(GkDeviceProp *prop, int numBlocks, int numThreads, GkylCartField_t *fIn, GkylCartField_t *out); 
 
 } 
 #endif 

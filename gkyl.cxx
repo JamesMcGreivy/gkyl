@@ -66,6 +66,7 @@ int finish(int err) {
   if (0 != err)
     MPI_Abort(MPI_COMM_WORLD, err);
   else 
+    adios_finalize(rank);
     MPI_Finalize();
   return err;
 }
@@ -141,6 +142,7 @@ main(int argc, char **argv) {
 #endif
 
   MPI_Init(&argc, &argv);
+  adios_init_noxml(MPI_COMM_WORLD);
 
   bool optShowToolList = false;
   std::string luaExpr;
@@ -148,7 +150,7 @@ main(int argc, char **argv) {
   // requirements are very simple. Sadly, even "sophisticated" tools
   // do not support very special need of gkeyll in which app or tool
   // can have complex command parsers of their own
-  char c;
+  int c;
   while ((c = getopt(argc, argv, "+hvte:")) != -1)
     switch (c)
     {

@@ -23,6 +23,8 @@ local diff             = require("sci.diff")
 
 local GkField = Proto(FieldBase.FieldBase)
 
+local EM_BC_OPEN = 1
+
 -- This ctor simply stores what is passed to it and defers actual
 -- construction to the fullInit() method below.
 function GkField:init(tbl)
@@ -48,6 +50,7 @@ function GkField:fullInit(appTbl)
    end
 
    self.ioFrame = 0 -- Frame number for IO.
+   self.dynVecRestartFrame = 0 -- Frame number of restarts (for DynVectors only).
 
    self.writeSkin = xsys.pickBool(appTbl.writeSkin, false)
 
@@ -478,6 +481,59 @@ function GkField:createSolver(species, funcField)
    elseif self.isElectromagnetic then
       self.nstep = 2
    end
+
+      -- function to construct a BC updater
+   local function makeBcUpdater(dir, edge, bcList)
+      return Updater.Bc {
+	 onGrid = self.grid,
+	 boundaryConditions = bcList,
+	 dir = dir,
+	 edge = edge,
+      }
+   end
+
+   -- various functions to apply BCs of different types
+   local function bcOpen(dir, tm, idxIn, fIn, fOut)
+      -- Requires skinLoop = "pointwise".
+      self.basis:flipSign(dir, fIn, fOut)
+   end
+
+   -- functions to make life easier while reading in BCs to apply
+   self.boundaryConditions = { } -- list of Bcs to apply
+   local function appendBoundaryConditions(dir, edge, bcType)
+      if bcType == EM_BC_OPEN then
+	 table.insert(self.boundaryConditions,
+		      makeBcUpdater(dir, edge, { bcOpen }))
+      else
+	 assert(false, "GkField: Unsupported BC type!")
+      end
+   end
+
+   local function handleBc(dir, bc)
+      if bc[1] then
+	 appendBoundaryConditions(dir, "lower", bc[1])
+      end
+      if bc[2] then
+	 appendBoundaryConditions(dir, "upper", bc[2])
+      end
+   end
+
+   local function contains(table, element)
+     for _, value in pairs(table) do
+       if value == element then
+         return true
+       end
+     end
+     return false
+   end
+
+   -- for non-periodic dirs, use BC_OPEN to make sure values on edge of ghost cells match values on edge of skin cells, 
+   -- so that field is continuous across skin-ghost boundary
+   for dir = 1, self.ndim do
+      if not contains(self.periodicDirs, dir) then 
+         handleBc(dir, {EM_BC_OPEN, EM_BC_OPEN}) 
+      end
+   end
 end
 
 function GkField:createDiagnostics()
@@ -583,7 +639,8 @@ function GkField:writeRestart(tm)
    end
 
    -- (the first "false" prevents flushing of data after write, the second "false" prevents appending)
-   self.phi2:write("phi2_restart.bp", tm, self.ioFrame, false, false)
+   self.phi2:write("phi2_restart.bp", tm, self.dynVecRestartFrame, false, false)
+   self.dynVecRestartFrame = self.dynVecRestartFrame + 1
 
 end
 
@@ -666,6 +723,10 @@ function GkField:advance(tCurr, species, inIdx, outIdx)
 
          -- Apply BCs.
          local tmStart = Time.clock()
+         -- make sure phi is continuous across skin-ghost boundary
+         for _, bc in ipairs(self.boundaryConditions) do
+            bc:advance(tCurr, {}, {potCurr.phi})
+         end
          potCurr.phi:sync(true)
          self.bcTime = self.bcTime + (Time.clock()-tmStart)
  
@@ -742,6 +803,10 @@ function GkField:advanceStep2(tCurr, species, inIdx, outIdx)
 
       -- Apply BCs.
       local tmStart = Time.clock()
+      -- make sure dApardt is continuous across skin-ghost boundary
+      for _, bc in ipairs(self.boundaryConditions) do
+         bc:advance(tCurr, {}, {potCurr.dApardt})
+      end
       dApardt:sync(true)
       self.bcTime = self.bcTime + (Time.clock()-tmStart)
 
@@ -818,6 +883,10 @@ function GkField:advanceStep3(tCurr, species, inIdx, outIdx)
 
       -- Apply BCs.
       local tmStart = Time.clock()
+      -- make sure dApardt is continuous across skin-ghost boundary
+      for _, bc in ipairs(self.boundaryConditions) do
+         bc:advance(tCurr, {}, {potCurr.dApardt})
+      end
       dApardt:sync(true)
       self.bcTime = self.bcTime + (Time.clock()-tmStart)
 
@@ -827,16 +896,27 @@ function GkField:advanceStep3(tCurr, species, inIdx, outIdx)
 end
 
 function GkField:applyBcIdx(tCurr, idx)
-   -- Don't do anything here. Global boundary conditions handled by solvers. 
-   -- Syncs to update interproc ghost already done at end of advance steps.
+   -- don't do anything here. BCs handled in advance steps.
 end
 
 -- NOTE: global boundary conditions handled by solver. this just updates interproc ghosts.
+-- Also NOTE: this method does not usually get called (because it is not called in applyBcIdx).
 function GkField:applyBc(tCurr, potIn)
    local tmStart = Time.clock()
+   for _, bc in ipairs(self.boundaryConditions) do
+      bc:advance(tCurr, {}, {potIn.phi})
+   end
    potIn.phi:sync(true)
    if self.isElectromagnetic then 
+     -- make sure apar is continuous across skin-ghost boundary
+     for _, bc in ipairs(self.boundaryConditions) do
+        bc:advance(tCurr, {}, {potIn.apar})
+     end
      potIn.apar:sync(true) 
+     -- make sure dApardt is continuous across skin-ghost boundary
+     for _, bc in ipairs(self.boundaryConditions) do
+        bc:advance(tCurr, {}, {potIn.dApardt})
+     end
      potIn.dApardt:sync(true) 
    end
    self.bcTime = self.bcTime + (Time.clock()-tmStart)

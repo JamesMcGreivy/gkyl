@@ -8,6 +8,7 @@
 #pragma once
 
 // std include
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -23,7 +24,7 @@
 
 #ifdef HAVE_MPI_H
 # include <mpi.h>
-# include <GkMpiFuncs.h>
+# include <GkylMpiFuncs.h>
 #endif
 
 #ifdef HAVE_ADIOS_H
@@ -153,7 +154,10 @@ Gkyl::Gkyl(const std::string& luaExpr, const std::string& inpFileNm, const std::
     { "queryrdb", {"queryrdb.lua", "Query/modify regression test DB"} },
     { "runregression", {"runregression.lua", "Run regression/unit tests"} },
     { "comparefiles", {"comparefiles.lua", "Compare two BP files"} },
-    { "exacteulerrp", {"exacteulerrp.lua", "Exact Euler Riemann problem solver"} }
+    { "exacteulerrp", {"exacteulerrp.lua", "Exact Euler Riemann problem solver"} },
+#ifdef HAVE_CUDA_H
+    { "deviceinfo", {"deviceinfo.lua", "Information about device"} },
+#endif
   };
 
   if (hasInpFile) {
@@ -268,9 +272,13 @@ std::string Gkyl::createTopLevelDefs() const {
   varDefs << "GKYL_MAX_DOUBLE = " << std::numeric_limits<double>::max() << std::endl;
   varDefs << "GKYL_MAX_FLOAT = " << std::numeric_limits<float>::max() << std::endl;
   varDefs << "GKYL_EPSILON = " << std::numeric_limits<double>::epsilon() << std::endl;
+  varDefs << "GKYL_MAX_INT16 = " << INT16_MAX << std::endl;  
+
+  // flag to indicate if input file should be embedded in ouput
+  varDefs << "GKYL_EMBED_INP = true" << std::endl; // default true
 
   // set some JIT parameters to fiddle around with optimizations
-  varDefs << "jit.opt.start('callunroll=40', 'loopunroll=80', 'maxmcode=40960', 'maxtrace=8000', 'maxrecord=16000', 'minstitch=3')"
+  varDefs << "if jit.opt then jit.opt.start('callunroll=40', 'loopunroll=80', 'maxmcode=40960', 'maxtrace=8000', 'maxrecord=16000', 'minstitch=3') end"
           << std::endl;
 
   // output prefix
